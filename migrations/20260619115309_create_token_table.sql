@@ -1,0 +1,13 @@
+-- +goose Up
+CREATE TABLE tokens (
+    id VARCHAR(20) PRIMARY KEY,
+    refresh_token VARCHAR(255) NOT NULL,
+    user_id VARCHAR(20) NOT NULL,
+    client_id VARCHAR(36) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- +goose Down
+DROP TABLE tokens;
