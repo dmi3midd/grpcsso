@@ -26,7 +26,7 @@ type userRepository struct {
 	db *sqlx.DB
 }
 
-func New(db *sqlx.DB) UserRepository {
+func NewUserRepo(db *sqlx.DB) UserRepository {
 	return &userRepository{db: db}
 }
 
