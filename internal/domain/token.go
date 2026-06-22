@@ -1,6 +1,10 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
 
 type Token struct {
 	Id           string    `json:"id" db:"id"`
@@ -10,4 +14,21 @@ type Token struct {
 	ExpiresAt    time.Time `json:"expiresAt" db:"expires_at"`
 	CreatedAt    time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt    time.Time `json:"updatedAt" db:"updated_at"`
+}
+
+type TokensPair struct {
+	RefreshToken string `json:"refreshToken"`
+	AccessToken  string `json:"accessToken"`
+}
+
+type UserClaims struct {
+	UserId      string   `json:"userId"`
+	Username    string   `json:"username"`
+	Email       string   `json:"email"`
+	Permissions []string `json:"permissions"`
+}
+
+type AccessClaims struct {
+	UserClaims `json:"user"`
+	jwt.RegisteredClaims
 }
