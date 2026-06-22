@@ -24,7 +24,7 @@ var (
 
 type TokenService interface {
 	// GenerateTokens generates pair with access and refresh tokens and token id (TokensPair, tokenId, error).
-	GenerateTokens(user domain.UserClaims, clientId string) (*domain.TokensPair, string, error)
+	GenerateTokens(user domain.UserDto, clientId string) (*domain.TokensPair, string, error)
 	// ValidateRefreshToken validates refresh token and returns token and user id (tokenId, userId, error).
 	// It returns ("", "", error) if validation go wrong.
 	// It returns ErrUnexpectedSigningMethod if the token uses an unexpected signing method.
@@ -61,7 +61,7 @@ func NewTokenService(tokenStore repository.TokenRepository, keys *config.KeysPai
 	}
 }
 
-func (s *tokenService) GenerateTokens(user domain.UserClaims, clientId string) (*domain.TokensPair, string, error) {
+func (s *tokenService) GenerateTokens(user domain.UserDto, clientId string) (*domain.TokensPair, string, error) {
 	op := "TokenService.GenerateTokens"
 	accessExpiry, _ := time.ParseDuration("30m")
 	refreshExpiry, _ := time.ParseDuration("336h")
@@ -72,11 +72,11 @@ func (s *tokenService) GenerateTokens(user domain.UserClaims, clientId string) (
 	accessToken, err := jwt.NewWithClaims(
 		jwt.SigningMethodRS256,
 		&domain.AccessClaims{
-			UserClaims: user,
+			User: user,
 			RegisteredClaims: jwt.RegisteredClaims{
 				ID:        id,
 				Issuer:    "grpcsso",
-				Subject:   user.UserId,
+				Subject:   user.Id,
 				Audience:  jwt.ClaimStrings{clientId},
 				ExpiresAt: jwt.NewNumericDate(now.Add(accessExpiry)),
 				IssuedAt:  jwt.NewNumericDate(now),
@@ -92,7 +92,7 @@ func (s *tokenService) GenerateTokens(user domain.UserClaims, clientId string) (
 	refreshClaims := jwt.RegisteredClaims{
 		ID:        id,
 		Issuer:    "grpcsso",
-		Subject:   user.UserId,
+		Subject:   user.Id,
 		Audience:  jwt.ClaimStrings{clientId},
 		ExpiresAt: jwt.NewNumericDate(now.Add(refreshExpiry)),
 		IssuedAt:  jwt.NewNumericDate(now),

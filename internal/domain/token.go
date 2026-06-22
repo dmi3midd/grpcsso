@@ -21,14 +21,14 @@ type TokensPair struct {
 	AccessToken  string `json:"accessToken"`
 }
 
-type UserClaims struct {
-	UserId      string   `json:"userId"`
-	Username    string   `json:"username"`
-	Email       string   `json:"email"`
-	Permissions []string `json:"permissions"`
-}
+// type UserClaims struct {
+// 	UserId      string   `json:"userId"`
+// 	Username    string   `json:"username"`
+// 	Email       string   `json:"email"`
+// 	Permissions []string `json:"permissions"`
+// }
 
 type AccessClaims struct {
-	UserClaims `json:"user"`
+	User UserDto `json:"user"`
 	jwt.RegisteredClaims
 }
