@@ -39,12 +39,12 @@ type TokenService interface {
 	ValidateAccessToken(accessToken string) (*domain.UserDto, string, error)
 	// SaveToken creates refresh token for the user.
 	SaveToken(ctx context.Context, refreshToken, userId, clientId, tokenId string) (string, error)
-	// RemoveToken removes refresh token.
-	// It returns ErrTokenNotFound if no token are found.
-	RemoveToken(ctx context.Context, id string) error
 	// FindToken finds and returns a Token entity by its refresh token string.
 	// It returns ErrTokenNotFound if no token are found.
 	FindToken(ctx context.Context, id string) (*domain.Token, error)
+	// RemoveToken removes refresh token.
+	// It returns ErrTokenNotFound if no token are found.
+	RemoveToken(ctx context.Context, id string) error
 	// GetPublicKey returns public rsa keys
 	GetPublicKey() rsa.PublicKey
 }
@@ -169,22 +169,56 @@ func (s *tokenService) ValidateAccessToken(accessToken string) (*domain.UserDto,
 	}, tokenId, nil
 }
 
-// FindToken implements [TokenService].
-func (t *tokenService) FindToken(ctx context.Context, id string) (*domain.Token, error) {
-	panic("unimplemented")
+func (s *tokenService) SaveToken(ctx context.Context, refreshToken string, userId string, clientId string, tokenId string) (string, error) {
+	op := "TokenService.SaveToken"
+
+	claims := &jwt.RegisteredClaims{}
+	_, _, err := jwt.NewParser().ParseUnverified(refreshToken, claims)
+	if err != nil {
+		return "", fmt.Errorf("%s: failed to parse refresh token: %w", op, err)
+	}
+
+	var expiresAt time.Time
+	if claims.ExpiresAt != nil {
+		expiresAt = claims.ExpiresAt.Time
+	} else {
+		expiresAt = time.Now().Add(336 * time.Hour)
+	}
+
+	token := domain.Token{
+		Id:           tokenId,
+		RefreshToken: refreshToken,
+		UserId:       userId,
+		ClientId:     clientId,
+		ExpiresAt:    expiresAt,
+	}
+	id, err := s.tokenStore.Create(ctx, &token)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+	return id, nil
 }
 
-// GetPublicKey implements [TokenService].
-func (t *tokenService) GetPublicKey() rsa.PublicKey {
-	panic("unimplemented")
+func (s *tokenService) FindToken(ctx context.Context, id string) (*domain.Token, error) {
+	op := "TokenService.FindToken"
+	token, err := s.tokenStore.GetById(ctx, id)
+	if err != nil {
+		if errors.Is(err, repository.ErrTokenNotFound) {
+			return nil, fmt.Errorf("%s: %w", op, ErrTokenNotFound)
+		}
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return token, nil
 }
 
-// RemoveToken implements [TokenService].
-func (t *tokenService) RemoveToken(ctx context.Context, id string) error {
-	panic("unimplemented")
+func (s *tokenService) RemoveToken(ctx context.Context, id string) error {
+	op := "TokenService.RemoveToken"
+	if err := s.tokenStore.DeleteById(ctx, id); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
 }
 
-// SaveToken implements [TokenService].
-func (t *tokenService) SaveToken(ctx context.Context, refreshToken string, userId string, clientId string, tokenId string) (string, error) {
-	panic("unimplemented")
+func (s *tokenService) GetPublicKey() rsa.PublicKey {
+	return *s.keys.PublicKey
 }
