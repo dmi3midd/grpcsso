@@ -109,6 +109,66 @@ func (s *tokenService) GenerateTokens(user domain.UserDto, clientId string) (*do
 	}, id, nil
 }
 
+func (s *tokenService) ValidateRefreshToken(refreshToken string) (string, string, error) {
+	op := "TokenService.ValidateRefreshToken"
+	claims := &jwt.RegisteredClaims{}
+	token, err := jwt.ParseWithClaims(refreshToken, claims, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("%s: %w %v", op, ErrUnexpectedSigningMethod, token.Header["alg"])
+		}
+		return s.keys.PublicKey, nil
+	})
+
+	if err != nil {
+		return "", "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	if !token.Valid {
+		return "", "", fmt.Errorf("%s: %w", op, ErrInvalidRefreshToken)
+	}
+
+	userId := claims.Subject
+	tokenId := claims.ID
+
+	if userId == "" || tokenId == "" {
+		return "", "", fmt.Errorf("%s: %w", op, ErrSubjectAndIDNotFound)
+	}
+
+	return tokenId, userId, nil
+}
+
+func (s *tokenService) ValidateAccessToken(accessToken string) (*domain.UserDto, string, error) {
+	op := "TokenService.ValidateAccessToken"
+	claims := &domain.AccessClaims{}
+	token, err := jwt.ParseWithClaims(accessToken, claims, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("%s: %w %v", op, ErrUnexpectedSigningMethod, token.Header["alg"])
+		}
+		return s.keys.PublicKey, nil
+	})
+
+	if err != nil {
+		return nil, "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	if !token.Valid {
+		return nil, "", fmt.Errorf("%s: %w", op, ErrInvalidAccessToken)
+	}
+
+	userId := claims.Subject
+	tokenId := claims.ID
+
+	if userId == "" || tokenId == "" {
+		return nil, "", fmt.Errorf("%s: %w", op, ErrSubjectAndIDNotFound)
+	}
+
+	return &domain.UserDto{
+		Id:       userId,
+		Username: claims.User.Username,
+		Email:    claims.User.Email,
+	}, tokenId, nil
+}
+
 // FindToken implements [TokenService].
 func (t *tokenService) FindToken(ctx context.Context, id string) (*domain.Token, error) {
 	panic("unimplemented")
@@ -126,15 +186,5 @@ func (t *tokenService) RemoveToken(ctx context.Context, id string) error {
 
 // SaveToken implements [TokenService].
 func (t *tokenService) SaveToken(ctx context.Context, refreshToken string, userId string, clientId string, tokenId string) (string, error) {
-	panic("unimplemented")
-}
-
-// ValidateAccessToken implements [TokenService].
-func (t *tokenService) ValidateAccessToken(accessToken string) (*domain.UserDto, string, error) {
-	panic("unimplemented")
-}
-
-// ValidateRefreshToken implements [TokenService].
-func (t *tokenService) ValidateRefreshToken(refreshToken string) (string, string, error) {
 	panic("unimplemented")
 }
