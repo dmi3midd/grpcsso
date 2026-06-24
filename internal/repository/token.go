@@ -31,6 +31,8 @@ type TokenRepository interface {
 	DeleteById(ctx context.Context, id string) error
 	// DeleteByToken removes the Token entity by its refresh token.
 	DeleteByToken(ctx context.Context, refreshToken string) error
+	// DeleteByUserId removes the Token entity by its user id.
+	DeleteByUserId(ctx context.Context, userId string) error
 	// DeleteExpired removes expired tokens.
 	DeleteExpired(ctx context.Context) error
 }
@@ -126,6 +128,18 @@ func (r *tokenRepository) DeleteByToken(ctx context.Context, refreshToken string
 	WHERE refresh_token = $1
 	`
 	if _, err := r.db.ExecContext(ctx, query, refreshToken); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
+}
+
+func (r *tokenRepository) DeleteByUserId(ctx context.Context, userId string) error {
+	op := "TokenRepository.DeleteByUserId"
+	query := `
+	DELETE FROM tokens 
+	WHERE user_id = $1
+	`
+	if _, err := r.db.ExecContext(ctx, query, userId); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
