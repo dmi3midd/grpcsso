@@ -21,10 +21,10 @@ type PermissionService interface {
 	// GetPermissions returns permissions for a user and client.
 	// Returns an empty slice if the user has no permissions.
 	GetPermissions(ctx context.Context, userId, clientId string) ([]string, error)
-	// SetPermissions overwrites all permissions for a user and client.
+	// AddPermissions adds permissions for a user and client.
 	// Returns [ErrEmptyPermissions] if the permissions slice is empty.
-	// Returns [`ErrTooManyPermissions`] if the permissions slice is too large (more than 16).
-	SetPermissions(ctx context.Context, userId, clientId string, permissions []string) error
+	// Returns [ErrTooManyPermissions] if the permissions slice is too large (more than 16).
+	AddPermissions(ctx context.Context, userId, clientId string, permissions []string) error
 	// HasPermissions checks if a user has ALL the specified permissions.
 	// Returns [ErrEmptyPermissions] if the permissions slice is empty.
 	// Returns ErrTooManyPermissions if the permissions slice is too large (more than 16).
@@ -45,14 +45,6 @@ func NewPermissionService(permissionStore repository.PermissionRepository) Permi
 func (s *permissionService) GetPermissions(ctx context.Context, userId string, clientId string) ([]string, error) {
 	op := "PermissionService.GetPermissions"
 
-	// _, err := s.userStore.GetById(ctx, userId)
-	// if errors.Is(err, repository.ErrUserNotFound) {
-	// 	return nil, fmt.Errorf("%s: %w", op, ErrPermissionNotFound)
-	// }
-	// if err != nil {
-	// 	return nil, fmt.Errorf("%s: %w", op, err)
-	// }
-
 	permissions, err := s.permissionStore.GetByUserIdAndClientId(ctx, userId, clientId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -69,16 +61,8 @@ func (s *permissionService) GetPermissions(ctx context.Context, userId string, c
 	return result, nil
 }
 
-func (s *permissionService) SetPermissions(ctx context.Context, userId string, clientId string, permissions []string) error {
-	op := "PermissionService.SetPermissions"
-
-	// _, err := s.userStore.GetById(ctx, userId)
-	// if errors.Is(err, repository.ErrUserNotFound) {
-	// 	return fmt.Errorf("%s: %w", op, ErrPermissionNotFound)
-	// }
-	// if err != nil {
-	// 	return fmt.Errorf("%s: %w", op, err)
-	// }
+func (s *permissionService) AddPermissions(ctx context.Context, userId string, clientId string, permissions []string) error {
+	op := "PermissionService.AddPermissions"
 
 	if len(permissions) == 0 {
 		return fmt.Errorf("%s: %w", op, ErrEmptyPermissions)
@@ -98,10 +82,6 @@ func (s *permissionService) SetPermissions(ctx context.Context, userId string, c
 			UpdatedAt:  now,
 		}
 	}
-
-	if err := s.permissionStore.DeleteAllForUserAndClient(ctx, userId, clientId); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
 	if err := s.permissionStore.CreateMany(ctx, newPermissions); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -111,14 +91,6 @@ func (s *permissionService) SetPermissions(ctx context.Context, userId string, c
 
 func (s *permissionService) HasPermissions(ctx context.Context, userId string, clientId string, permissions []string) (bool, error) {
 	op := "PermissionService.HasPermissions"
-
-	// _, err := s.userStore.GetById(ctx, userId)
-	// if errors.Is(err, repository.ErrUserNotFound) {
-	// 	return false, fmt.Errorf("%s: %w", op, ErrPermissionNotFound)
-	// }
-	// if err != nil {
-	// 	return false, fmt.Errorf("%s: %w", op, err)
-	// }
 
 	if len(permissions) == 0 {
 		return false, fmt.Errorf("%s: %w", op, ErrEmptyPermissions)
