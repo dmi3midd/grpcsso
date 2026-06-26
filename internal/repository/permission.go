@@ -13,6 +13,8 @@ type PermissionRepository interface {
 	GetByUserIdAndClientId(ctx context.Context, userId, clientId string) ([]domain.Permission, error)
 	// CreateMany creates multiple permissions for a user for a specific client.
 	CreateMany(ctx context.Context, permissions []domain.Permission) error
+	// DeleteMany deletes specific permissions for a user for a specific client.
+	DeleteMany(ctx context.Context, userId, clientId string, permissions []string) error
 	// DeleteAllForUserAndClient deletes all permissions for a user for a specific client.
 	DeleteAllForUserAndClient(ctx context.Context, userId, clientId string) error
 }
@@ -53,6 +55,20 @@ func (r *permissionRepository) CreateMany(ctx context.Context, permissions []dom
 	VALUES (:id, :user_id, :client_id, :permission, :created_at, :updated_at)
 	`
 	_, err := r.db.NamedExecContext(ctx, query, permissions)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}
+
+func (r *permissionRepository) DeleteMany(ctx context.Context, userId, clientId string, permissions []string) error {
+	op := "PermissionRepository.DeleteMany"
+	query := `
+	DELETE FROM permissions 
+	WHERE user_id = $1 AND client_id = $2 AND permission = ANY($3)
+	`
+	_, err := r.db.ExecContext(ctx, query, userId, clientId, permissions)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}

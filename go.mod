@@ -3,7 +3,7 @@ module github.com/dmi3midd/grpcsso
 go 1.26.4
 
 require (
-	github.com/dmi3midd/grpcsso-protos v0.0.0-00010101000000-000000000000
+	github.com/dmi3midd/grpcsso-protos v0.0.0-20260624162619-42be31661225
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jmoiron/sqlx v1.4.0
@@ -24,7 +24,7 @@ require (
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.53.0 // indirect
+	golang.org/x/crypto v0.53.0
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
