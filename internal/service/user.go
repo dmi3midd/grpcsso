@@ -27,9 +27,9 @@ type AuthDto struct {
 }
 
 type UserService interface {
-	// Registration performs user registration and returns UserData struct.
+	// Registration performs user registration.
 	// It returns ErrUserAlreadyExist if the user exist.
-	Registration(ctx context.Context, username, email, password, clientId string, permissions []string) error
+	Registration(ctx context.Context, username, email, password, clientId string) error
 	// Login performs user login and returns LoginResult struct.
 	// It returns ErrUserNotFound if no user are found.
 	// It returns ErrInvalidPassword if the password is invalid.
@@ -52,16 +52,14 @@ type userService struct {
 func NewUserService(
 	userStore repository.UserRepository,
 	tokenService TokenService,
-	permissionService PermissionService,
 ) UserService {
 	return &userService{
-		userStore:         userStore,
-		tokenService:      tokenService,
-		permissionService: permissionService,
+		userStore:    userStore,
+		tokenService: tokenService,
 	}
 }
 
-func (s *userService) Registration(ctx context.Context, username, email, password, clientId string, permissions []string) error {
+func (s *userService) Registration(ctx context.Context, username, email, password, clientId string) error {
 	op := "UserService.Registration"
 
 	candidate, err := s.userStore.GetByEmail(ctx, email)
@@ -91,10 +89,6 @@ func (s *userService) Registration(ctx context.Context, username, email, passwor
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err := s.permissionService.AddPermissions(ctx, id, clientId, permissions); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
 	return nil
 }
 
@@ -114,11 +108,6 @@ func (s *userService) Login(ctx context.Context, email, password, clientId strin
 	}
 
 	userDto := user.ToUserDto()
-	permissions, err := s.permissionService.GetPermissions(ctx, user.Id, clientId)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-
 	tokens, tokenId, err := s.tokenService.GenerateTokens(*userDto, clientId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -131,7 +120,6 @@ func (s *userService) Login(ctx context.Context, email, password, clientId strin
 	return &AuthDto{
 		ClientId:     clientId,
 		User:         *userDto,
-		Permissions:  permissions,
 		AccessToken:  tokens.AccessToken,
 		RefreshToken: tokens.RefreshToken,
 	}, nil
@@ -180,11 +168,6 @@ func (s *userService) Refresh(ctx context.Context, refreshToken, clientId string
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	userDto := user.ToUserDto()
-	permissions, err := s.permissionService.GetPermissions(ctx, userId, clientId)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-
 	tokens, newTokenId, err := s.tokenService.GenerateTokens(*userDto, clientId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -197,7 +180,6 @@ func (s *userService) Refresh(ctx context.Context, refreshToken, clientId string
 	return &AuthDto{
 		ClientId:     clientId,
 		User:         *userDto,
-		Permissions:  permissions,
 		AccessToken:  tokens.AccessToken,
 		RefreshToken: tokens.RefreshToken,
 	}, nil
