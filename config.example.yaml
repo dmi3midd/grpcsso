@@ -1,0 +1,18 @@
+server:
+  host: localhost
+  port: 3100
+postgres:
+  dbname: grpcsso
+  host: localhost
+  port: 5432
+  user: grpcsso_user
+  password: grpcsso_12345
+  sslmode: disable
+  maxOpenConns: 10
+  maxIdleConns: 10
+  maxIdleTime: 15m
+redis:
+  uri: "redis://grpcsso_user:grpcsso_12345@localhost:6379"
+pem:
+  priv_path: "./storage/keys/private.pem"
+  pub_path: "./storage/keys/public.pem"

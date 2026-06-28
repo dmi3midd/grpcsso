@@ -7,6 +7,7 @@ import (
 	grpcssov1 "github.com/dmi3midd/grpcsso-protos/gen/go/grpcssov1"
 	"github.com/dmi3midd/grpcsso/internal/grpc/server"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 type App struct {
@@ -17,6 +18,10 @@ func NewApp(srv *server.Server) *App {
 	gRPCServer := grpc.NewServer()
 
 	grpcssov1.RegisterAuthServiceServer(gRPCServer, srv)
+	grpcssov1.RegisterPermissionServiceServer(gRPCServer, srv)
+	grpcssov1.RegisterResetPasswordServiceServer(gRPCServer, srv)
+	// TODO: Enable reflection in production
+	reflection.Register(gRPCServer)
 
 	return &App{
 		gRPCServer: gRPCServer,

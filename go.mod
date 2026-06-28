@@ -3,7 +3,7 @@ module github.com/dmi3midd/grpcsso
 go 1.26.4
 
 require (
-	github.com/dmi3midd/grpcsso-protos v0.0.0-20260624162619-42be31661225
+	github.com/dmi3midd/grpcsso-protos v0.0.0-20260628104345-dbd23292ccaa
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jmoiron/sqlx v1.4.0
