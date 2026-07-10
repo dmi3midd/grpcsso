@@ -1,0 +1,13 @@
+server:
+  host: localhost
+  port: 3100
+postgres:
+  name: grpcsso
+  host: localhost
+  port: 5444
+  user: grpcsso_user
+  password: grpcsso_12345
+  sslmode: disable
+  maxOpenConns: 10
+  maxIdleConns: 10
+  maxIdleTime: 15m

@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: grpcsso-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: grpcsso
+      POSTGRES_USER: grpcsso_user
+      POSTGRES_PASSWORD: grpcsso_12345
+    ports:
+      - "5444:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U grpcsso_user -d grpcsso" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
