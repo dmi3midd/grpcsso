@@ -1,6 +1,6 @@
 package domain
 
-type RefreshToken struct {
+type Token struct {
 	ID           string `json:"id"`
 	UserID       string `json:"user_id"`
 	RefreshToken string `json:"refresh_token"`
