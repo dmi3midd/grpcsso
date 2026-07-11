@@ -11,3 +11,10 @@ postgres:
   maxOpenConns: 10
   maxIdleConns: 10
   maxIdleTime: 15m
+jwt:
+  accessTokenTTL: 15m
+  refreshTokenTTL: 336h
+  audience: your-service-consumer
+pem:
+  privPath: "./storage/keys/private.pem"
+  pubPath: "./storage/keys/public.pem"
