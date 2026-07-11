@@ -35,6 +35,10 @@ type UserService interface {
 	// Logout performs logout user.
 	// Look at TokenService.ValidateRefreshToken for errors.
 	Logout(ctx context.Context, refreshToken string) error
+	// Refresh performs refreshing access and refresh tokens.
+	// It returns [ErrUserNotFound] if no user are found.
+	// Look at TokenService.ValidateRefreshToken for other errors.
+	Refresh(ctx context.Context, refreshToken, ipAddress, userAgent string) (*AuthDto, error)
 }
 
 type userService struct {
@@ -134,4 +138,51 @@ func (s *userService) Logout(ctx context.Context, refreshToken string) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
+}
+
+func (s *userService) Refresh(ctx context.Context, refreshToken, ipAddress, userAgent string) (*AuthDto, error) {
+	op := "UserService.Refresh"
+	tokenId, userId, err := s.tokenManager.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	// if token is not found user is unauthorized
+	_, err = s.tokenManager.FindToken(ctx, tokenId)
+	if err != nil {
+		// if errors.Is(err, ErrTokenNotFound) {
+		// 	return nil, fmt.Errorf("%s: %w", op, ErrTokenNotFound)
+		// }
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	user, err := s.userRepo.GetById(ctx, userId)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return nil, fmt.Errorf("%s: %w", op, ErrUserNotFound)
+		}
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	userDto := user.ToUserDto()
+
+	tokens, newTokenId, err := s.tokenManager.GenerateTokens(userDto)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if _, err := s.tokenManager.SaveToken(ctx, &domain.Token{
+		ID:           newTokenId,
+		UserID:       userId,
+		RefreshToken: tokens.RefreshToken,
+		UserAgent:    userAgent,
+		IpAddress:    ipAddress,
+	}); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return &AuthDto{
+		User:         *userDto,
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+	}, nil
 }

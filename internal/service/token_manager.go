@@ -46,7 +46,7 @@ type TokenManager interface {
 	// It returns [ErrInvalidAccessToken] if the token is invalid.
 	// It returns [ErrSubjectAndIDNotFound] if subject or token ID are not found in claims.
 	ValidateAccessToken(accessToken string) (*domain.UserDto, string, error)
-	// FindToken finds and returns a Token entity by its refresh token string.
+	// FindToken finds and returns a Token entity by its id string.
 	// It returns [ErrTokenNotFound] if no token are found.
 	FindToken(ctx context.Context, id string) (*domain.Token, error)
 	// SaveToken creates refresh token for the user.
