@@ -33,7 +33,7 @@ type AccessClaims struct {
 
 type TokenManager interface {
 	// GenerateTokens generates pair with access and refresh tokens and token id (TokensPair, tokenId, error).
-	GenerateTokens(user *domain.UserDto, clientId string) (*TokensPair, string, error)
+	GenerateTokens(user *domain.UserDto) (*TokensPair, string, error)
 	// ValidateRefreshToken validates refresh token and returns token id and user id (tokenId, userId, error).
 	// It returns ("", "", error) if validation go wrong.
 	// It returns [ErrUnexpectedSigningMethod] if the token uses an unexpected signing method.
@@ -69,7 +69,7 @@ func NewTokenManager(tokenRepo repository.TokenRepository, keys *config.KeysPair
 	}
 }
 
-func (s *tokenManager) GenerateTokens(user *domain.UserDto, clientId string) (*TokensPair, string, error) {
+func (s *tokenManager) GenerateTokens(user *domain.UserDto) (*TokensPair, string, error) {
 	op := "TokenManager.GenerateTokens"
 	accessExpiry := s.jwtCfg.AccessTokenTTL
 	refreshExpiry := s.jwtCfg.RefreshTokenTTL
@@ -200,12 +200,8 @@ func (s *tokenManager) SaveToken(ctx context.Context, token *domain.Token) (stri
 		return "", fmt.Errorf("%s: failed to parse refresh token: %w", op, err)
 	}
 
-	// var expiresAt time.Time
-	// if claims.ExpiresAt != nil {
-	// 	expiresAt = claims.ExpiresAt.Time
-	// } else {
-	// 	expiresAt = time.Now().Add(336 * time.Hour)
-	// }
+	token.ExpiresAt = time.Now().Add(s.jwtCfg.RefreshTokenTTL)
+	token.CreatedAt = time.Now()
 
 	id, err := s.tokenRepo.Create(ctx, token)
 	if err != nil {
