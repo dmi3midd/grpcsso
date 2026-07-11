@@ -113,6 +113,7 @@ func (s *userService) Login(ctx context.Context, email, password, userAgent, ipA
 		RefreshToken: tokens.RefreshToken,
 		UserAgent:    userAgent,
 		IpAddress:    ipAddress,
+		IsRevoked:    false,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -147,9 +148,8 @@ func (s *userService) Refresh(ctx context.Context, refreshToken, ipAddress, user
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// if token is not found user is unauthorized
-	_, err = s.tokenManager.FindToken(ctx, tokenId)
-	if err != nil {
+	// if token is not found user is unauthorized and need to login
+	if err := s.tokenManager.RevokeToken(ctx, tokenId); err != nil {
 		// if errors.Is(err, ErrTokenNotFound) {
 		// 	return nil, fmt.Errorf("%s: %w", op, ErrTokenNotFound)
 		// }
@@ -176,6 +176,7 @@ func (s *userService) Refresh(ctx context.Context, refreshToken, ipAddress, user
 		RefreshToken: tokens.RefreshToken,
 		UserAgent:    userAgent,
 		IpAddress:    ipAddress,
+		IsRevoked:    false,
 	}); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

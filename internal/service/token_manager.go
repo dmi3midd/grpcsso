@@ -53,6 +53,9 @@ type TokenManager interface {
 	SaveToken(ctx context.Context, token *domain.Token) (string, error)
 	// RemoveToken removes refresh token.
 	RemoveToken(ctx context.Context, id string) error
+	// RevokeToken revokes token by its id.
+	// It returns [ErrTokenNotFound] if no token are found.
+	RevokeToken(ctx context.Context, id string) error
 }
 
 type tokenManager struct {
@@ -201,6 +204,7 @@ func (s *tokenManager) SaveToken(ctx context.Context, token *domain.Token) (stri
 	}
 
 	token.ExpiresAt = time.Now().Add(s.jwtCfg.RefreshTokenTTL)
+	token.UpdatedAt = time.Now()
 	token.CreatedAt = time.Now()
 
 	id, err := s.tokenRepo.Create(ctx, token)
@@ -213,6 +217,23 @@ func (s *tokenManager) SaveToken(ctx context.Context, token *domain.Token) (stri
 func (s *tokenManager) RemoveToken(ctx context.Context, id string) error {
 	op := "TokenManager.RemoveToken"
 	if err := s.tokenRepo.DeleteById(ctx, id); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
+}
+
+func (s *tokenManager) RevokeToken(ctx context.Context, id string) error {
+	op := "TokenManager.RevokeToken"
+	token, err := s.tokenRepo.GetById(ctx, id)
+	if err != nil {
+		if errors.Is(err, repository.ErrTokenNotFound) {
+			return fmt.Errorf("%s: %w", op, ErrTokenNotFound)
+		}
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	token.IsRevoked = true
+	token.UpdatedAt = time.Now()
+	if err := s.tokenRepo.Update(ctx, id, token); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil

@@ -5,7 +5,9 @@ CREATE TABLE refresh_tokens (
     refresh_token TEXT NOT NULL UNIQUE,
     user_agent VARCHAR(255),
     ip_address VARCHAR(45),
+    is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
     expires_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP NOT NULL
 );
 
