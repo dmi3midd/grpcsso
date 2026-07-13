@@ -15,6 +15,8 @@ var (
 )
 
 type UserRepository interface {
+	// UserExists checks if a user with the given Id exists.
+	IsExists(ctx context.Context, ext sqlx.ExtContext, userId string) (bool, error)
 	// GetById retrieves a User entity by its id.
 	// It returns [ErrUserNotFound] if no user are found.
 	GetById(ctx context.Context, userId string) (*domain.User, error)
@@ -37,6 +39,20 @@ func NewUserRepo(db *sqlx.DB) UserRepository {
 	return &userRepository{
 		db: db,
 	}
+}
+
+func (r *userRepository) IsExists(ctx context.Context, ext sqlx.ExtContext, userId string) (bool, error) {
+	op := "UserRepository.IsExists"
+	query := `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`
+	var exists bool
+	err := sqlx.GetContext(ctx, ext, &exists, query, userId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("%s: %w", op, err)
+	}
+	return exists, nil
 }
 
 func (r *userRepository) GetById(ctx context.Context, userId string) (*domain.User, error) {

@@ -42,14 +42,23 @@ type RBACService interface {
 }
 
 type rbacService struct {
-	db       *sqlx.DB
-	rbacRepo repository.RBACRepository
+	db             *sqlx.DB
+	userRepo       repository.UserRepository
+	roleRepo       repository.RoleRepository
+	permissionRepo repository.PermissionRepository
 }
 
-func NewRBACService(db *sqlx.DB, rbacRepo repository.RBACRepository) RBACService {
+func NewRBACService(
+	db *sqlx.DB,
+	userRepo repository.UserRepository,
+	roleRepo repository.RoleRepository,
+	permissionRepo repository.PermissionRepository,
+) RBACService {
 	return &rbacService{
-		db:       db,
-		rbacRepo: rbacRepo,
+		db:             db,
+		userRepo:       userRepo,
+		roleRepo:       roleRepo,
+		permissionRepo: permissionRepo,
 	}
 }
 
@@ -74,7 +83,7 @@ func (s *rbacService) withTx(ctx context.Context, txFn func(tx *sqlx.Tx) error) 
 func (s *rbacService) AssignRoleToUser(ctx context.Context, userId, roleId string) error {
 	op := "RBACService.AssignRoleToUser"
 	return s.withTx(ctx, func(tx *sqlx.Tx) error {
-		exists, err := s.rbacRepo.UserExists(ctx, tx, userId)
+		exists, err := s.userRepo.IsExists(ctx, tx, userId)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
@@ -82,7 +91,7 @@ func (s *rbacService) AssignRoleToUser(ctx context.Context, userId, roleId strin
 			return fmt.Errorf("%s: %w", op, ErrUserNotFound)
 		}
 
-		exists, err = s.rbacRepo.RoleExists(ctx, tx, roleId)
+		exists, err = s.roleRepo.IsExists(ctx, tx, roleId)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
@@ -90,7 +99,7 @@ func (s *rbacService) AssignRoleToUser(ctx context.Context, userId, roleId strin
 			return fmt.Errorf("%s: %w", op, ErrRoleNotFound)
 		}
 
-		if err := s.rbacRepo.AssignRoleToUser(ctx, tx, userId, roleId); err != nil {
+		if err := s.roleRepo.Assign(ctx, tx, userId, roleId); err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
 		return nil
@@ -100,7 +109,7 @@ func (s *rbacService) AssignRoleToUser(ctx context.Context, userId, roleId strin
 func (s *rbacService) RemoveRoleFromUser(ctx context.Context, userId, roleId string) error {
 	op := "RBACService.RemoveRoleFromUser"
 	return s.withTx(ctx, func(tx *sqlx.Tx) error {
-		exists, err := s.rbacRepo.UserExists(ctx, tx, userId)
+		exists, err := s.userRepo.IsExists(ctx, tx, userId)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
@@ -108,7 +117,7 @@ func (s *rbacService) RemoveRoleFromUser(ctx context.Context, userId, roleId str
 			return fmt.Errorf("%s: %w", op, ErrUserNotFound)
 		}
 
-		exists, err = s.rbacRepo.RoleExists(ctx, tx, roleId)
+		exists, err = s.roleRepo.IsExists(ctx, tx, roleId)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
@@ -116,7 +125,7 @@ func (s *rbacService) RemoveRoleFromUser(ctx context.Context, userId, roleId str
 			return fmt.Errorf("%s: %w", op, ErrRoleNotFound)
 		}
 
-		if err := s.rbacRepo.RemoveRoleFromUser(ctx, tx, userId, roleId); err != nil {
+		if err := s.roleRepo.Revoke(ctx, tx, userId, roleId); err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
 		return nil
@@ -125,7 +134,7 @@ func (s *rbacService) RemoveRoleFromUser(ctx context.Context, userId, roleId str
 
 func (s *rbacService) GetUserRoles(ctx context.Context, userId string) ([]domain.Role, error) {
 	op := "RBACService.GetUserRoles"
-	roles, err := s.rbacRepo.GetUserRoles(ctx, s.db, userId)
+	roles, err := s.roleRepo.GetByUser(ctx, s.db, userId)
 	if err != nil {
 		return []domain.Role{}, fmt.Errorf("%s: %w", op, err)
 	}
@@ -137,7 +146,7 @@ func (s *rbacService) GetUserRoles(ctx context.Context, userId string) ([]domain
 func (s *rbacService) AssignPermissionToRole(ctx context.Context, roleId, permissionId string) error {
 	op := "RBACService.AssignPermissionToRole"
 	return s.withTx(ctx, func(tx *sqlx.Tx) error {
-		exists, err := s.rbacRepo.RoleExists(ctx, tx, roleId)
+		exists, err := s.roleRepo.IsExists(ctx, tx, roleId)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
@@ -145,7 +154,7 @@ func (s *rbacService) AssignPermissionToRole(ctx context.Context, roleId, permis
 			return fmt.Errorf("%s: %w", op, ErrRoleNotFound)
 		}
 
-		exists, err = s.rbacRepo.PermissionExists(ctx, tx, permissionId)
+		exists, err = s.permissionRepo.IsExists(ctx, tx, permissionId)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
@@ -153,7 +162,7 @@ func (s *rbacService) AssignPermissionToRole(ctx context.Context, roleId, permis
 			return fmt.Errorf("%s: %w", op, ErrPermissionNotFound)
 		}
 
-		if err := s.rbacRepo.AssignPermissionToRole(ctx, tx, roleId, permissionId); err != nil {
+		if err := s.permissionRepo.Assign(ctx, tx, roleId, permissionId); err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
 		return nil
@@ -163,7 +172,7 @@ func (s *rbacService) AssignPermissionToRole(ctx context.Context, roleId, permis
 func (s *rbacService) RemovePermissionFromRole(ctx context.Context, roleId, permissionId string) error {
 	op := "RBACService.RemovePermissionFromRole"
 	return s.withTx(ctx, func(tx *sqlx.Tx) error {
-		exists, err := s.rbacRepo.RoleExists(ctx, tx, roleId)
+		exists, err := s.roleRepo.IsExists(ctx, tx, roleId)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
@@ -171,7 +180,7 @@ func (s *rbacService) RemovePermissionFromRole(ctx context.Context, roleId, perm
 			return fmt.Errorf("%s: %w", op, ErrRoleNotFound)
 		}
 
-		exists, err = s.rbacRepo.PermissionExists(ctx, tx, permissionId)
+		exists, err = s.permissionRepo.IsExists(ctx, tx, permissionId)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
@@ -179,7 +188,7 @@ func (s *rbacService) RemovePermissionFromRole(ctx context.Context, roleId, perm
 			return fmt.Errorf("%s: %w", op, ErrPermissionNotFound)
 		}
 
-		if err := s.rbacRepo.RemovePermissionFromRole(ctx, tx, roleId, permissionId); err != nil {
+		if err := s.permissionRepo.Revoke(ctx, tx, roleId, permissionId); err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
 		return nil
@@ -188,7 +197,7 @@ func (s *rbacService) RemovePermissionFromRole(ctx context.Context, roleId, perm
 
 func (s *rbacService) GetRolePermissions(ctx context.Context, roleId string) ([]domain.Permission, error) {
 	op := "RBACService.GetRolePermissions"
-	permissions, err := s.rbacRepo.GetRolePermissions(ctx, s.db, roleId)
+	permissions, err := s.permissionRepo.GetByRole(ctx, s.db, roleId)
 	if err != nil {
 		return []domain.Permission{}, fmt.Errorf("%s: %w", op, err)
 	}
