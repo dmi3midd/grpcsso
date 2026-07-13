@@ -3,7 +3,7 @@ package domain
 import "time"
 
 type User struct {
-	ID           string    `json:"id" db:"id"`
+	Id           string    `json:"id" db:"id"`
 	Username     string    `json:"username" db:"username"`
 	Email        string    `json:"email" db:"email"`
 	PasswordHash string    `json:"passwordHash" db:"password_hash"`
@@ -12,14 +12,14 @@ type User struct {
 }
 
 type UserDto struct {
-	ID       string `json:"id" db:"id"`
+	Id       string `json:"id" db:"id"`
 	Username string `json:"username" db:"username"`
 	Email    string `json:"email" db:"email"`
 }
 
 func (u *User) ToUserDto() *UserDto {
 	return &UserDto{
-		ID:       u.ID,
+		Id:       u.Id,
 		Username: u.Username,
 		Email:    u.Email,
 	}

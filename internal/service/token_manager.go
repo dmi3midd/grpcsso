@@ -17,7 +17,7 @@ var (
 	ErrUnexpectedSigningMethod = errors.New("unexpected signing method")
 	ErrInvalidRefreshToken     = errors.New("invalid refresh token")
 	ErrInvalidAccessToken      = errors.New("invalid access token")
-	ErrSubjectAndIDNotFound    = errors.New("subject and id not found")
+	ErrSubjectAndIdNotFound    = errors.New("subject and id not found")
 	ErrTokenNotFound           = errors.New("token not found")
 )
 
@@ -38,13 +38,13 @@ type TokenManager interface {
 	// It returns ("", "", error) if validation go wrong.
 	// It returns [ErrUnexpectedSigningMethod] if the token uses an unexpected signing method.
 	// It returns [ErrInvalidRefreshToken] if the token is invalid.
-	// It returns [ErrSubjectAndIDNotFound] if subject or token ID are not found in claims.
+	// It returns [ErrSubjectAndIdNotFound] if subject or token id are not found in claims.
 	ValidateRefreshToken(refreshToken string) (string, string, error)
 	// ValidateAccessToken validates access token and returns userDto and token id (userDto, tokenId, error).
 	// It returns (nil, "", error) if validation go wrong.
 	// It returns [ErrUnexpectedSigningMethod] if the token uses an unexpected signing method.
 	// It returns [ErrInvalidAccessToken] if the token is invalid.
-	// It returns [ErrSubjectAndIDNotFound] if subject or token ID are not found in claims.
+	// It returns [ErrSubjectAndIdNotFound] if subject or token id are not found in claims.
 	ValidateAccessToken(accessToken string) (*domain.UserDto, string, error)
 	// FindToken finds and returns a Token entity by its id string.
 	// It returns [ErrTokenNotFound] if no token are found.
@@ -88,7 +88,7 @@ func (s *tokenManager) GenerateTokens(user *domain.UserDto) (*TokensPair, string
 			RegisteredClaims: jwt.RegisteredClaims{
 				ID:        id,
 				Issuer:    "grpcsso",
-				Subject:   user.ID,
+				Subject:   user.Id,
 				Audience:  jwt.ClaimStrings{s.jwtCfg.Audience},
 				ExpiresAt: jwt.NewNumericDate(now.Add(accessExpiry)),
 				IssuedAt:  jwt.NewNumericDate(now),
@@ -104,7 +104,7 @@ func (s *tokenManager) GenerateTokens(user *domain.UserDto) (*TokensPair, string
 	refreshClaims := jwt.RegisteredClaims{
 		ID:        id,
 		Issuer:    "grpcsso",
-		Subject:   user.ID,
+		Subject:   user.Id,
 		Audience:  jwt.ClaimStrings{s.jwtCfg.Audience},
 		ExpiresAt: jwt.NewNumericDate(now.Add(refreshExpiry)),
 		IssuedAt:  jwt.NewNumericDate(now),
@@ -143,7 +143,7 @@ func (s *tokenManager) ValidateRefreshToken(refreshToken string) (string, string
 	tokenId := claims.ID
 
 	if userId == "" || tokenId == "" {
-		return "", "", fmt.Errorf("%s: %w", op, ErrSubjectAndIDNotFound)
+		return "", "", fmt.Errorf("%s: %w", op, ErrSubjectAndIdNotFound)
 	}
 
 	return tokenId, userId, nil
@@ -171,11 +171,11 @@ func (s *tokenManager) ValidateAccessToken(accessToken string) (*domain.UserDto,
 	tokenId := claims.ID
 
 	if userId == "" || tokenId == "" {
-		return nil, "", fmt.Errorf("%s: %w", op, ErrSubjectAndIDNotFound)
+		return nil, "", fmt.Errorf("%s: %w", op, ErrSubjectAndIdNotFound)
 	}
 
 	return &domain.UserDto{
-		ID:       userId,
+		Id:       userId,
 		Username: claims.User.Username,
 		Email:    claims.User.Email,
 	}, tokenId, nil

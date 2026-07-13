@@ -82,7 +82,7 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) (string,
 	if _, err := r.db.NamedExecContext(ctx, query, user); err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
-	return user.ID, nil
+	return user.Id, nil
 }
 
 func (r *userRepository) Update(ctx context.Context, user *domain.User) (string, error) {
@@ -96,7 +96,7 @@ func (r *userRepository) Update(ctx context.Context, user *domain.User) (string,
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
-	return user.ID, nil
+	return user.Id, nil
 }
 
 func (r *userRepository) Delete(ctx context.Context, userId string) error {

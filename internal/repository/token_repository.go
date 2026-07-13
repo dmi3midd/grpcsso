@@ -86,7 +86,7 @@ func (r *tokenRepository) Create(ctx context.Context, token *domain.Token) (stri
 	if _, err := r.db.NamedExecContext(ctx, query, token); err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
-	return token.ID, nil
+	return token.Id, nil
 }
 
 func (r *tokenRepository) Update(ctx context.Context, id string, token *domain.Token) error {

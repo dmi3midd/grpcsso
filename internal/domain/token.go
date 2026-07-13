@@ -3,8 +3,8 @@ package domain
 import "time"
 
 type Token struct {
-	ID           string    `json:"id" db:"id"`
-	UserID       string    `json:"userId" db:"user_id"`
+	Id           string    `json:"id" db:"id"`
+	UserId       string    `json:"userId" db:"user_id"`
 	RefreshToken string    `json:"refreshToken" db:"refresh_token"`
 	UserAgent    string    `json:"userAgent" db:"user_agent"`
 	IpAddress    string    `json:"ipAddress" db:"ip_address"`

@@ -73,7 +73,7 @@ func (s *userService) Registration(ctx context.Context, username, email, passwor
 	}
 
 	user := &domain.User{
-		ID:           id,
+		Id:           id,
 		Username:     username,
 		Email:        email,
 		PasswordHash: string(hashedPassword),
@@ -108,8 +108,8 @@ func (s *userService) Login(ctx context.Context, email, password, userAgent, ipA
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	_, err = s.tokenManager.SaveToken(ctx, &domain.Token{
-		ID:           tokenId,
-		UserID:       userDto.ID,
+		Id:           tokenId,
+		UserId:       userDto.Id,
 		RefreshToken: tokens.RefreshToken,
 		UserAgent:    userAgent,
 		IpAddress:    ipAddress,
@@ -171,8 +171,8 @@ func (s *userService) Refresh(ctx context.Context, refreshToken, ipAddress, user
 	}
 
 	if _, err := s.tokenManager.SaveToken(ctx, &domain.Token{
-		ID:           newTokenId,
-		UserID:       userId,
+		Id:           newTokenId,
+		UserId:       userId,
 		RefreshToken: tokens.RefreshToken,
 		UserAgent:    userAgent,
 		IpAddress:    ipAddress,
