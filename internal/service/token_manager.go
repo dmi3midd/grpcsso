@@ -59,13 +59,20 @@ type TokenManager interface {
 }
 
 type tokenManager struct {
+	txManager repository.TxManager
 	tokenRepo repository.TokenRepository
 	jwtCfg    *config.JWTConfig
 	keys      config.KeysPair
 }
 
-func NewTokenManager(tokenRepo repository.TokenRepository, keys *config.KeysPair, jwtCfg *config.JWTConfig) TokenManager {
+func NewTokenManager(
+	txManager repository.TxManager,
+	tokenRepo repository.TokenRepository,
+	keys *config.KeysPair,
+	jwtCfg *config.JWTConfig,
+) TokenManager {
 	return &tokenManager{
+		txManager: txManager,
 		tokenRepo: tokenRepo,
 		jwtCfg:    jwtCfg,
 		keys:      *keys,
@@ -183,7 +190,7 @@ func (s *tokenManager) ValidateAccessToken(accessToken string) (*domain.UserDto,
 
 func (s *tokenManager) FindToken(ctx context.Context, id string) (*domain.Token, error) {
 	op := "TokenManager.FindToken"
-	token, err := s.tokenRepo.GetById(ctx, id)
+	token, err := s.tokenRepo.GetById(ctx, s.txManager.GetDB(), id)
 	if err != nil {
 		if errors.Is(err, repository.ErrTokenNotFound) {
 			return nil, fmt.Errorf("%s: %w", op, ErrTokenNotFound)
@@ -197,17 +204,17 @@ func (s *tokenManager) FindToken(ctx context.Context, id string) (*domain.Token,
 func (s *tokenManager) SaveToken(ctx context.Context, token *domain.Token) (string, error) {
 	op := "TokenManager.SaveToken"
 
-	claims := &jwt.RegisteredClaims{}
-	_, _, err := jwt.NewParser().ParseUnverified(token.RefreshToken, claims)
-	if err != nil {
-		return "", fmt.Errorf("%s: failed to parse refresh token: %w", op, err)
-	}
+	// claims := &jwt.RegisteredClaims{}
+	// _, _, err := jwt.NewParser().ParseUnverified(token.RefreshToken, claims)
+	// if err != nil {
+	// 	return "", fmt.Errorf("%s: failed to parse refresh token: %w", op, err)
+	// }
 
 	token.ExpiresAt = time.Now().Add(s.jwtCfg.RefreshTokenTTL)
 	token.UpdatedAt = time.Now()
 	token.CreatedAt = time.Now()
 
-	id, err := s.tokenRepo.Create(ctx, token)
+	id, err := s.tokenRepo.Create(ctx, s.txManager.GetDB(), token)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
@@ -216,15 +223,16 @@ func (s *tokenManager) SaveToken(ctx context.Context, token *domain.Token) (stri
 
 func (s *tokenManager) RemoveToken(ctx context.Context, id string) error {
 	op := "TokenManager.RemoveToken"
-	if err := s.tokenRepo.DeleteById(ctx, id); err != nil {
+	if err := s.tokenRepo.DeleteById(ctx, s.txManager.GetDB(), id); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
 }
 
+// TODO: Add transaction execution
 func (s *tokenManager) RevokeToken(ctx context.Context, id string) error {
 	op := "TokenManager.RevokeToken"
-	token, err := s.tokenRepo.GetById(ctx, id)
+	token, err := s.tokenRepo.GetById(ctx, s.txManager.GetDB(), id)
 	if err != nil {
 		if errors.Is(err, repository.ErrTokenNotFound) {
 			return fmt.Errorf("%s: %w", op, ErrTokenNotFound)
@@ -233,7 +241,7 @@ func (s *tokenManager) RevokeToken(ctx context.Context, id string) error {
 	}
 	token.IsRevoked = true
 	token.UpdatedAt = time.Now()
-	if err := s.tokenRepo.Update(ctx, id, token); err != nil {
+	if err := s.tokenRepo.Update(ctx, s.txManager.GetDB(), id, token); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil

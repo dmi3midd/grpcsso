@@ -30,6 +30,7 @@ type PermissionRepository interface {
 	// Revoke deletes a record from role_permissions.
 	Revoke(ctx context.Context, ext sqlx.ExtContext, roleId, permissionId string) error
 	// GetByRole returns all permissions assigned to a role.
+	// Returns empty slice if no permissions are found.
 	GetByRole(ctx context.Context, ext sqlx.ExtContext, roleId string) ([]domain.Permission, error)
 }
 
@@ -63,7 +64,7 @@ func (r *permissionRepository) GetById(ctx context.Context, ext sqlx.ExtContext,
 	permission := &domain.Permission{}
 	err := sqlx.GetContext(ctx, ext, permission, query, id)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("%s: %w", op, ErrPermissionNotFound)
 		}
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -75,7 +76,7 @@ func (r *permissionRepository) Create(ctx context.Context, ext sqlx.ExtContext, 
 	op := "PermissionRepository.Create"
 	query := `
 	INSERT INTO permissions (id, name)
-	VALUES ($1, $2)
+	VALUES (:id, :name)
 	`
 	_, err := sqlx.NamedExecContext(ctx, ext, query, permission)
 	if err != nil {
@@ -134,7 +135,7 @@ func (r *permissionRepository) GetByRole(ctx context.Context, ext sqlx.ExtContex
 	var permissions []domain.Permission
 	err := sqlx.SelectContext(ctx, ext, &permissions, query, roleId)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return []domain.Permission{}, fmt.Errorf("%s: %w", op, err)
 	}
 	return permissions, nil
 }

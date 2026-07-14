@@ -42,21 +42,28 @@ type UserService interface {
 }
 
 type userService struct {
+	txManager    repository.TxManager
 	userRepo     repository.UserRepository
 	tokenManager TokenManager
 }
 
-func NewUserService(userRepo repository.UserRepository, tokenManager TokenManager) UserService {
+func NewUserService(
+	txManager repository.TxManager,
+	userRepo repository.UserRepository,
+	tokenManager TokenManager,
+) UserService {
 	return &userService{
+		txManager:    txManager,
 		userRepo:     userRepo,
 		tokenManager: tokenManager,
 	}
 }
 
+// TODO: Add transaction execution
 func (s *userService) Registration(ctx context.Context, username, email, password string) error {
 	op := "UserService.Registration"
 
-	candidate, err := s.userRepo.GetByEmail(ctx, email)
+	candidate, err := s.userRepo.GetByEmail(ctx, s.txManager.GetDB(), email)
 	if err != nil && !errors.Is(err, repository.ErrUserNotFound) {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -80,7 +87,7 @@ func (s *userService) Registration(ctx context.Context, username, email, passwor
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
-	if _, err := s.userRepo.Create(ctx, user); err != nil {
+	if _, err := s.userRepo.Create(ctx, s.txManager.GetDB(), user); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -90,7 +97,7 @@ func (s *userService) Registration(ctx context.Context, username, email, passwor
 func (s *userService) Login(ctx context.Context, email, password, userAgent, ipAddress string) (*AuthDto, error) {
 	op := "UserService.Login"
 
-	user, err := s.userRepo.GetByEmail(ctx, email)
+	user, err := s.userRepo.GetByEmail(ctx, s.txManager.GetDB(), email)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			return nil, fmt.Errorf("%s: %w", op, ErrUserNotFound)
@@ -156,7 +163,7 @@ func (s *userService) Refresh(ctx context.Context, refreshToken, ipAddress, user
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	user, err := s.userRepo.GetById(ctx, userId)
+	user, err := s.userRepo.GetById(ctx, s.txManager.GetDB(), userId)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			return nil, fmt.Errorf("%s: %w", op, ErrUserNotFound)

@@ -30,18 +30,19 @@ type RoleRepository interface {
 	// Revoke deletes a record from user_roles.
 	Revoke(ctx context.Context, ext sqlx.ExtContext, userId, roleId string) error
 	// GetByUser returns all roles assigned to a user.
+	// Returns empty slice if no roles are found.
 	GetByUser(ctx context.Context, ext sqlx.ExtContext, userId string) ([]domain.Role, error)
 }
 
 type roleRepository struct {
 }
 
-func NewRoleRepository(db *sqlx.DB) RoleRepository {
+func NewRoleRepo() RoleRepository {
 	return &roleRepository{}
 }
 
 func (r *roleRepository) IsExists(ctx context.Context, ext sqlx.ExtContext, roleId string) (bool, error) {
-	op := "RBACRepository.RoleExists"
+	op := "RoleRepository.RoleExists"
 	query := `SELECT EXISTS(SELECT 1 FROM roles WHERE id = $1)`
 	var exists bool
 	err := sqlx.GetContext(ctx, ext, &exists, query, roleId)
@@ -63,6 +64,9 @@ func (r *roleRepository) GetById(ctx context.Context, ext sqlx.ExtContext, id st
 	role := &domain.Role{}
 	err := sqlx.GetContext(ctx, ext, role, query, id)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%s: %w", op, ErrRoleNotFound)
+		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -134,7 +138,7 @@ func (r *roleRepository) GetByUser(ctx context.Context, ext sqlx.ExtContext, use
 	var roles []domain.Role
 	err := sqlx.SelectContext(ctx, ext, &roles, query, userId)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return []domain.Role{}, fmt.Errorf("%s: %w", op, err)
 	}
 	return roles, nil
 }
