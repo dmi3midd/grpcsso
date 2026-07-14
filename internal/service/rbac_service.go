@@ -3,11 +3,9 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/dmi3midd/grpcsso/internal/domain"
 	"github.com/dmi3midd/grpcsso/internal/repository"
-	"github.com/jmoiron/sqlx"
 )
 
 var (
@@ -16,6 +14,14 @@ var (
 )
 
 type RBACService interface {
+	// GetRoleById returns a role by its id.
+	// Returns [ErrRoleNotFound] if the role is not found.
+	GetRoleById(ctx context.Context, roleId string) (*domain.Role, error)
+	// CreateRole creates a new role.
+	CreateRole(ctx context.Context, role *domain.Role) error
+	// DeleteRole deletes a role by its id.s
+	DeleteRole(ctx context.Context, roleId string) error
+
 	// AssignRoleToUser assigns a role to a user within a transaction.
 	// Returns [ErrUserNotFound] if the user does not exist.
 	// Returns [ErrRoleNotFound] if the role does not exist.
@@ -27,6 +33,14 @@ type RBACService interface {
 	// GetUserRoles returns all roles assigned to a user.
 	// Returns an empty slice if the user has no roles.
 	GetUserRoles(ctx context.Context, userId string) ([]domain.Role, error)
+
+	// GetPermissionById a permission by its id.
+	// Returns ErrPermissionNotFound if the permission is not found.
+	GetPermissionById(ctx context.Context, id string) (*domain.Permission, error)
+	// CreatePermission a new permission.
+	CreatePermission(ctx context.Context, permission *domain.Permission) error
+	// DeletePermission a permission by its id.
+	DeletePermission(ctx context.Context, id string) error
 
 	// AssignPermissionToRole assigns a permission to a role within a transaction.
 	// Returns [ErrRoleNotFound] if the role does not exist.
@@ -60,130 +74,4 @@ func NewRBACService(
 		roleRepo:       roleRepo,
 		permissionRepo: permissionRepo,
 	}
-}
-
-// User <=> Role
-
-func (s *rbacService) AssignRoleToUser(ctx context.Context, userId, roleId string) error {
-	op := "RBACService.AssignRoleToUser"
-	return s.txManager.WithTx(ctx, func(tx *sqlx.Tx) error {
-		exists, err := s.userRepo.IsExists(ctx, tx, userId)
-		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		if !exists {
-			return fmt.Errorf("%s: %w", op, ErrUserNotFound)
-		}
-
-		exists, err = s.roleRepo.IsExists(ctx, tx, roleId)
-		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		if !exists {
-			return fmt.Errorf("%s: %w", op, ErrRoleNotFound)
-		}
-
-		if err := s.roleRepo.Assign(ctx, tx, userId, roleId); err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		return nil
-	})
-}
-
-func (s *rbacService) RemoveRoleFromUser(ctx context.Context, userId, roleId string) error {
-	op := "RBACService.RemoveRoleFromUser"
-	return s.txManager.WithTx(ctx, func(tx *sqlx.Tx) error {
-		exists, err := s.userRepo.IsExists(ctx, tx, userId)
-		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		if !exists {
-			return fmt.Errorf("%s: %w", op, ErrUserNotFound)
-		}
-
-		exists, err = s.roleRepo.IsExists(ctx, tx, roleId)
-		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		if !exists {
-			return fmt.Errorf("%s: %w", op, ErrRoleNotFound)
-		}
-
-		if err := s.roleRepo.Revoke(ctx, tx, userId, roleId); err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		return nil
-	})
-}
-
-func (s *rbacService) GetUserRoles(ctx context.Context, userId string) ([]domain.Role, error) {
-	op := "RBACService.GetUserRoles"
-	roles, err := s.roleRepo.GetByUser(ctx, s.txManager.GetDB(), userId)
-	if err != nil {
-		return []domain.Role{}, fmt.Errorf("%s: %w", op, err)
-	}
-	return roles, nil
-}
-
-// Role <=> Permission
-
-func (s *rbacService) AssignPermissionToRole(ctx context.Context, roleId, permissionId string) error {
-	op := "RBACService.AssignPermissionToRole"
-	return s.txManager.WithTx(ctx, func(tx *sqlx.Tx) error {
-		exists, err := s.roleRepo.IsExists(ctx, tx, roleId)
-		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		if !exists {
-			return fmt.Errorf("%s: %w", op, ErrRoleNotFound)
-		}
-
-		exists, err = s.permissionRepo.IsExists(ctx, tx, permissionId)
-		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		if !exists {
-			return fmt.Errorf("%s: %w", op, ErrPermissionNotFound)
-		}
-
-		if err := s.permissionRepo.Assign(ctx, tx, roleId, permissionId); err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		return nil
-	})
-}
-
-func (s *rbacService) RemovePermissionFromRole(ctx context.Context, roleId, permissionId string) error {
-	op := "RBACService.RemovePermissionFromRole"
-	return s.txManager.WithTx(ctx, func(tx *sqlx.Tx) error {
-		exists, err := s.roleRepo.IsExists(ctx, tx, roleId)
-		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		if !exists {
-			return fmt.Errorf("%s: %w", op, ErrRoleNotFound)
-		}
-
-		exists, err = s.permissionRepo.IsExists(ctx, tx, permissionId)
-		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		if !exists {
-			return fmt.Errorf("%s: %w", op, ErrPermissionNotFound)
-		}
-
-		if err := s.permissionRepo.Revoke(ctx, tx, roleId, permissionId); err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		return nil
-	})
-}
-
-func (s *rbacService) GetRolePermissions(ctx context.Context, roleId string) ([]domain.Permission, error) {
-	op := "RBACService.GetRolePermissions"
-	permissions, err := s.permissionRepo.GetByRole(ctx, s.txManager.GetDB(), roleId)
-	if err != nil {
-		return []domain.Permission{}, fmt.Errorf("%s: %w", op, err)
-	}
-	return permissions, nil
 }
