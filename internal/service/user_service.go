@@ -25,17 +25,17 @@ type AuthDto struct {
 }
 
 type UserService interface {
-	// Registration performs user registration.
+	// Registration performs user registration and returns the user id.
 	// It returns ErrUserAlreadyExist if the user exist.
-	Registration(ctx context.Context, username, email, password string) error
-	// Login performs user login and returns LoginResult struct.
+	Registration(ctx context.Context, username, email, password string) (string, error)
+	// Login performs user login and returns AuthDto struct.
 	// It returns [ErrUserNotFound] if no user are found.
 	// It returns [ErrInvalidPassword] if the password is invalid.
 	Login(ctx context.Context, email, password, userAgent, ipAddress string) (*AuthDto, error)
 	// Logout performs logout user.
 	// Look at TokenService.ValidateRefreshToken for errors.
 	Logout(ctx context.Context, refreshToken string) error
-	// Refresh performs refreshing access and refresh tokens.
+	// Refresh performs refreshing access and refresh tokens and returns AuthDto struct.
 	// It returns [ErrUserNotFound] if no user are found.
 	// Look at TokenService.ValidateRefreshToken for other errors.
 	Refresh(ctx context.Context, refreshToken, ipAddress, userAgent string) (*AuthDto, error)
@@ -60,23 +60,23 @@ func NewUserService(
 }
 
 // TODO: Add transaction execution
-func (s *userService) Registration(ctx context.Context, username, email, password string) error {
+func (s *userService) Registration(ctx context.Context, username, email, password string) (string, error) {
 	op := "UserService.Registration"
 
 	candidate, err := s.userRepo.GetByEmail(ctx, s.txManager.GetDB(), email)
 	if err != nil && !errors.Is(err, repository.ErrUserNotFound) {
-		return fmt.Errorf("%s: %w", op, err)
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	if candidate != nil {
-		return fmt.Errorf("%s: %w", op, ErrUserAlreadyExist)
+		return "", fmt.Errorf("%s: %w", op, ErrUserAlreadyExist)
 	}
 
 	v7uuid, _ := uuid.NewV7()
 	id := v7uuid.String()
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	user := &domain.User{
@@ -88,10 +88,10 @@ func (s *userService) Registration(ctx context.Context, username, email, passwor
 		UpdatedAt:    time.Now(),
 	}
 	if _, err := s.userRepo.Create(ctx, s.txManager.GetDB(), user); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
-	return nil
+	return id, nil
 }
 
 func (s *userService) Login(ctx context.Context, email, password, userAgent, ipAddress string) (*AuthDto, error) {

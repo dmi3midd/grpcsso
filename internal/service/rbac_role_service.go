@@ -7,6 +7,7 @@ import (
 
 	"github.com/dmi3midd/grpcsso/internal/domain"
 	"github.com/dmi3midd/grpcsso/internal/repository"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -22,27 +23,33 @@ func (s *rbacService) GetRoleById(ctx context.Context, roleId string) (*domain.R
 	return role, nil
 }
 
-func (s *rbacService) CreateRole(ctx context.Context, role *domain.Role) error {
+func (s *rbacService) CreateRole(ctx context.Context, name string) (string, error) {
 	op := "RBACService.CreateRole"
-	if err := s.roleRepo.Create(ctx, s.txManager.GetDB(), role); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+	v7uuid, _ := uuid.NewV7()
+	id := v7uuid.String()
+	role := &domain.Role{
+		Id:   id,
+		Name: name,
 	}
-	return nil
+	if err := s.roleRepo.Create(ctx, s.txManager.GetDB(), role); err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+	return id, nil
 }
 
-func (s *rbacService) DeleteRole(ctx context.Context, roleId string) error {
+func (s *rbacService) DeleteRole(ctx context.Context, roleId string) (string, error) {
 	op := "RBACService.DeleteRole"
 	if err := s.roleRepo.Delete(ctx, s.txManager.GetDB(), roleId); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
-	return nil
+	return roleId, nil
 }
 
 // User <=> Role
 
-func (s *rbacService) AssignRoleToUser(ctx context.Context, userId, roleId string) error {
+func (s *rbacService) AssignRoleToUser(ctx context.Context, roleId, userId string) (string, string, error) {
 	op := "RBACService.AssignRoleToUser"
-	return s.txManager.WithTx(ctx, func(tx *sqlx.Tx) error {
+	err := s.txManager.WithTx(ctx, func(tx *sqlx.Tx) error {
 		exists, err := s.userRepo.IsExists(ctx, tx, userId)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
@@ -64,11 +71,15 @@ func (s *rbacService) AssignRoleToUser(ctx context.Context, userId, roleId strin
 		}
 		return nil
 	})
+	if err != nil {
+		return "", "", err
+	}
+	return roleId, userId, nil
 }
 
-func (s *rbacService) RemoveRoleFromUser(ctx context.Context, userId, roleId string) error {
-	op := "RBACService.RemoveRoleFromUser"
-	return s.txManager.WithTx(ctx, func(tx *sqlx.Tx) error {
+func (s *rbacService) RevokeRoleFromUser(ctx context.Context, roleId, userId string) (string, string, error) {
+	op := "RBACService.RevokeRoleFromUser"
+	err := s.txManager.WithTx(ctx, func(tx *sqlx.Tx) error {
 		exists, err := s.userRepo.IsExists(ctx, tx, userId)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
@@ -90,6 +101,10 @@ func (s *rbacService) RemoveRoleFromUser(ctx context.Context, userId, roleId str
 		}
 		return nil
 	})
+	if err != nil {
+		return "", "", err
+	}
+	return roleId, userId, nil
 }
 
 func (s *rbacService) GetUserRoles(ctx context.Context, userId string) ([]domain.Role, error) {

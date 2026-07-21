@@ -7,12 +7,13 @@ import (
 
 	"github.com/dmi3midd/grpcsso/internal/domain"
 	"github.com/dmi3midd/grpcsso/internal/repository"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
-func (s *rbacService) GetPermissionById(ctx context.Context, id string) (*domain.Permission, error) {
+func (s *rbacService) GetPermissionById(ctx context.Context, permissionId string) (*domain.Permission, error) {
 	op := "RBACService.GetPermissionById"
-	permission, err := s.permissionRepo.GetById(ctx, nil, id)
+	permission, err := s.permissionRepo.GetById(ctx, nil, permissionId)
 	if err != nil {
 		if errors.Is(err, repository.ErrPermissionNotFound) {
 			return nil, fmt.Errorf("%s: %w", op, ErrPermissionNotFound)
@@ -22,27 +23,33 @@ func (s *rbacService) GetPermissionById(ctx context.Context, id string) (*domain
 	return permission, nil
 }
 
-func (s *rbacService) CreatePermission(ctx context.Context, permission *domain.Permission) error {
+func (s *rbacService) CreatePermission(ctx context.Context, name string) (string, error) {
 	op := "RBACService.CreatePermission"
-	if err := s.permissionRepo.Create(ctx, nil, permission); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+	v7uuid, _ := uuid.NewV7()
+	id := v7uuid.String()
+	permission := &domain.Permission{
+		Id:   id,
+		Name: name,
 	}
-	return nil
+	if err := s.permissionRepo.Create(ctx, nil, permission); err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+	return id, nil
 }
 
-func (s *rbacService) DeletePermission(ctx context.Context, id string) error {
+func (s *rbacService) DeletePermission(ctx context.Context, permissionId string) (string, error) {
 	op := "RBACService.DeletePermission"
-	if err := s.permissionRepo.Delete(ctx, nil, id); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+	if err := s.permissionRepo.Delete(ctx, nil, permissionId); err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
-	return nil
+	return permissionId, nil
 }
 
 // Role <=> Permission
 
-func (s *rbacService) AssignPermissionToRole(ctx context.Context, roleId, permissionId string) error {
+func (s *rbacService) AssignPermissionToRole(ctx context.Context, permissionId, roleId string) (string, string, error) {
 	op := "RBACService.AssignPermissionToRole"
-	return s.txManager.WithTx(ctx, func(tx *sqlx.Tx) error {
+	err := s.txManager.WithTx(ctx, func(tx *sqlx.Tx) error {
 		exists, err := s.roleRepo.IsExists(ctx, tx, roleId)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
@@ -64,11 +71,15 @@ func (s *rbacService) AssignPermissionToRole(ctx context.Context, roleId, permis
 		}
 		return nil
 	})
+	if err != nil {
+		return "", "", err
+	}
+	return permissionId, roleId, nil
 }
 
-func (s *rbacService) RemovePermissionFromRole(ctx context.Context, roleId, permissionId string) error {
-	op := "RBACService.RemovePermissionFromRole"
-	return s.txManager.WithTx(ctx, func(tx *sqlx.Tx) error {
+func (s *rbacService) RevokePermissionFromRole(ctx context.Context, permissionId, roleId string) (string, string, error) {
+	op := "RBACService.RevokePermissionFromRole"
+	err := s.txManager.WithTx(ctx, func(tx *sqlx.Tx) error {
 		exists, err := s.roleRepo.IsExists(ctx, tx, roleId)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
@@ -90,6 +101,10 @@ func (s *rbacService) RemovePermissionFromRole(ctx context.Context, roleId, perm
 		}
 		return nil
 	})
+	if err != nil {
+		return "", "", err
+	}
+	return permissionId, roleId, nil
 }
 
 func (s *rbacService) GetRolePermissions(ctx context.Context, roleId string) ([]domain.Permission, error) {
