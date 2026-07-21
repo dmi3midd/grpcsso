@@ -3,6 +3,7 @@ module github.com/dmi3midd/grpcsso
 go 1.26.5
 
 require (
+	github.com/dmi3midd/grpcsso-protos v0.0.0-20260721122326-c830a68ff99d
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx v3.6.2+incompatible
