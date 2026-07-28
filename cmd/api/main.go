@@ -11,6 +11,8 @@ import (
 	"github.com/dmi3midd/grpcsso/internal/grpc/listener"
 	"github.com/dmi3midd/grpcsso/internal/grpc/server"
 	"github.com/dmi3midd/grpcsso/internal/postgres"
+	"github.com/dmi3midd/grpcsso/internal/repository"
+	"github.com/dmi3midd/grpcsso/internal/service"
 )
 
 func main() {
@@ -39,8 +41,21 @@ func main() {
 		log.Fatalf("failed to create listener: %v", err)
 	}
 
+	// Initialize repositories and services
+	db := postgresService.GetDB()
+	txManager := repository.NewTxManager(db)
+
+	userRepo := repository.NewUserRepo()
+	tokenRepo := repository.NewTokenRepo()
+	roleRepo := repository.NewRoleRepo()
+	permissionRepo := repository.NewPermissionRepo()
+
+	tokenManager := service.NewTokenManager(txManager, tokenRepo, &cfg.Keys, &cfg.JWT)
+	userService := service.NewUserService(txManager, userRepo, tokenManager)
+	rbacService := service.NewRBACService(txManager, userRepo, roleRepo, permissionRepo)
+
 	// Create gRPC server
-	gRPCServer := server.NewServer()
+	gRPCServer := server.NewServer(userService, rbacService)
 
 	// Initialize gRPC app
 	gRPCApp := app.NewApp(gRPCServer)

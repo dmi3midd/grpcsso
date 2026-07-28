@@ -15,8 +15,8 @@ type App struct {
 
 func NewApp(srv *server.Server) *App {
 	gRPCServer := grpc.NewServer()
-	// TODO: Enable reflection in production
 	reflection.Register(gRPCServer)
+	srv.Register(gRPCServer)
 
 	return &App{
 		gRPCServer: gRPCServer,

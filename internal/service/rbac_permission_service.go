@@ -13,7 +13,7 @@ import (
 
 func (s *rbacService) GetPermissionById(ctx context.Context, permissionId string) (*domain.Permission, error) {
 	op := "RBACService.GetPermissionById"
-	permission, err := s.permissionRepo.GetById(ctx, nil, permissionId)
+	permission, err := s.permissionRepo.GetById(ctx, s.txManager.GetDB(), permissionId)
 	if err != nil {
 		if errors.Is(err, repository.ErrPermissionNotFound) {
 			return nil, fmt.Errorf("%s: %w", op, ErrPermissionNotFound)
@@ -31,7 +31,7 @@ func (s *rbacService) CreatePermission(ctx context.Context, name string) (string
 		Id:   id,
 		Name: name,
 	}
-	if err := s.permissionRepo.Create(ctx, nil, permission); err != nil {
+	if err := s.permissionRepo.Create(ctx, s.txManager.GetDB(), permission); err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 	return id, nil
@@ -39,7 +39,7 @@ func (s *rbacService) CreatePermission(ctx context.Context, name string) (string
 
 func (s *rbacService) DeletePermission(ctx context.Context, permissionId string) (string, error) {
 	op := "RBACService.DeletePermission"
-	if err := s.permissionRepo.Delete(ctx, nil, permissionId); err != nil {
+	if err := s.permissionRepo.Delete(ctx, s.txManager.GetDB(), permissionId); err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 	return permissionId, nil
