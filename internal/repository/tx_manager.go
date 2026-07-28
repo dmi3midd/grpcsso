@@ -7,8 +7,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+type txKey struct{}
+
 type TxManager interface {
-	WithTx(ctx context.Context, txFn func(tx *sqlx.Tx) error) error
+	// WithTx executes a function within a database transaction.
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+	// GetDB returns the database connection.
 	GetDB() *sqlx.DB
 }
 
@@ -22,7 +26,7 @@ func NewTxManager(db *sqlx.DB) TxManager {
 	}
 }
 
-func (s *txManager) WithTx(ctx context.Context, txFn func(tx *sqlx.Tx) error) error {
+func (s *txManager) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	op := "TxManager.WithTx"
 	tx, err := s.db.BeginTxx(ctx, nil)
 	if err != nil {
@@ -30,7 +34,9 @@ func (s *txManager) WithTx(ctx context.Context, txFn func(tx *sqlx.Tx) error) er
 	}
 	defer tx.Rollback()
 
-	if err := txFn(tx); err != nil {
+	txCtx := context.WithValue(ctx, txKey{}, tx)
+
+	if err := fn(txCtx); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -39,4 +45,12 @@ func (s *txManager) WithTx(ctx context.Context, txFn func(tx *sqlx.Tx) error) er
 
 func (s *txManager) GetDB() *sqlx.DB {
 	return s.db
+}
+
+// ExtractTx returns *sqlx.Tx from context if available, otherwise returns db.
+func ExtractTx(ctx context.Context, db *sqlx.DB) sqlx.ExtContext {
+	if tx, ok := ctx.Value(txKey{}).(*sqlx.Tx); ok {
+		return tx
+	}
+	return db
 }

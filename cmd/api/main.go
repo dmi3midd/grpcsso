@@ -55,10 +55,10 @@ func main() {
 	db := postgresService.GetDB()
 	txManager := repository.NewTxManager(db)
 
-	userRepo := repository.NewUserRepo()
-	tokenRepo := repository.NewTokenRepo()
-	roleRepo := repository.NewRoleRepo()
-	permissionRepo := repository.NewPermissionRepo()
+	userRepo := repository.NewUserRepo(db)
+	tokenRepo := repository.NewTokenRepo(db)
+	roleRepo := repository.NewRoleRepo(db)
+	permissionRepo := repository.NewPermissionRepo(db)
 
 	tokenManager := service.NewTokenManager(txManager, tokenRepo, &cfg.Keys, &cfg.JWT)
 	userService := service.NewUserService(txManager, userRepo, tokenManager)

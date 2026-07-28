@@ -190,7 +190,7 @@ func (s *tokenManager) ValidateAccessToken(accessToken string) (*domain.UserDto,
 
 func (s *tokenManager) FindToken(ctx context.Context, id string) (*domain.Token, error) {
 	op := "TokenManager.FindToken"
-	token, err := s.tokenRepo.GetById(ctx, s.txManager.GetDB(), id)
+	token, err := s.tokenRepo.GetById(ctx, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrTokenNotFound) {
 			return nil, fmt.Errorf("%s: %w", op, ErrTokenNotFound)
@@ -214,7 +214,7 @@ func (s *tokenManager) SaveToken(ctx context.Context, token *domain.Token) (stri
 	token.UpdatedAt = time.Now()
 	token.CreatedAt = time.Now()
 
-	id, err := s.tokenRepo.Create(ctx, s.txManager.GetDB(), token)
+	id, err := s.tokenRepo.Create(ctx, token)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
@@ -223,7 +223,7 @@ func (s *tokenManager) SaveToken(ctx context.Context, token *domain.Token) (stri
 
 func (s *tokenManager) RemoveToken(ctx context.Context, id string) error {
 	op := "TokenManager.RemoveToken"
-	if err := s.tokenRepo.DeleteById(ctx, s.txManager.GetDB(), id); err != nil {
+	if err := s.tokenRepo.DeleteById(ctx, id); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
@@ -232,7 +232,7 @@ func (s *tokenManager) RemoveToken(ctx context.Context, id string) error {
 // TODO: Add transaction execution
 func (s *tokenManager) RevokeToken(ctx context.Context, id string) error {
 	op := "TokenManager.RevokeToken"
-	token, err := s.tokenRepo.GetById(ctx, s.txManager.GetDB(), id)
+	token, err := s.tokenRepo.GetById(ctx, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrTokenNotFound) {
 			return fmt.Errorf("%s: %w", op, ErrTokenNotFound)
@@ -241,7 +241,7 @@ func (s *tokenManager) RevokeToken(ctx context.Context, id string) error {
 	}
 	token.IsRevoked = true
 	token.UpdatedAt = time.Now()
-	if err := s.tokenRepo.Update(ctx, s.txManager.GetDB(), id, token); err != nil {
+	if err := s.tokenRepo.Update(ctx, id, token); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
