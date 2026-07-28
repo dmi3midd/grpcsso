@@ -54,15 +54,18 @@ func main() {
 	// Initialize repositories and services
 	db := postgresService.GetDB()
 	txManager := repository.NewTxManager(db)
+	redisClient := redisService.GetClient()
 
 	userRepo := repository.NewUserRepo(db)
 	tokenRepo := repository.NewTokenRepo(db)
 	roleRepo := repository.NewRoleRepo(db)
 	permissionRepo := repository.NewPermissionRepo(db)
+	roleCache := repository.NewRoleCache(redisClient)
+	permissionCache := repository.NewPermissionCache(redisClient)
 
 	tokenManager := service.NewTokenManager(txManager, tokenRepo, &cfg.Keys, &cfg.JWT)
 	userService := service.NewUserService(txManager, userRepo, tokenManager)
-	rbacService := service.NewRBACService(txManager, userRepo, roleRepo, permissionRepo)
+	rbacService := service.NewRBACService(txManager, userRepo, roleRepo, permissionRepo, roleCache, permissionCache)
 
 	// Create gRPC server
 	gRPCServer := server.NewServer(userService, rbacService)
