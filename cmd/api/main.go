@@ -68,7 +68,10 @@ func main() {
 	gRPCServer := server.NewServer(userService, rbacService)
 
 	// Initialize gRPC app
-	gRPCApp := app.NewApp(gRPCServer)
+	gRPCApp, err := app.NewApp(gRPCServer)
+	if err != nil {
+		log.Fatalf("failed to create gRPC app: %v", err)
+	}
 
 	// Run gRPC server in a goroutine
 	go func() {
