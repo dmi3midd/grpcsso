@@ -12,7 +12,7 @@ build:
 run:
 	@go run ./cmd/api
 
-# Create DB container
+# Create and start containers
 docker-run:
 	@if docker compose up --build 2>/dev/null; then \
 		: ; \
@@ -21,7 +21,7 @@ docker-run:
 		docker-compose up --build; \
 	fi
 
-# Shutdown DB container
+# Shutdown containers
 docker-down:
 	@if docker compose down 2>/dev/null; then \
 		: ; \

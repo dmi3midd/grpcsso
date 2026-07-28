@@ -11,6 +11,8 @@ postgres:
   maxOpenConns: 10
   maxIdleConns: 10
   maxIdleTime: 15m
+redis:
+  uri: redis://grpcsso_user:grpcsso_12345@localhost:6379
 jwt:
   accessTokenTTL: 15m
   refreshTokenTTL: 336h

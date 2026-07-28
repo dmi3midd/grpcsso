@@ -11,6 +11,7 @@ import (
 	"github.com/dmi3midd/grpcsso/internal/grpc/listener"
 	"github.com/dmi3midd/grpcsso/internal/grpc/server"
 	"github.com/dmi3midd/grpcsso/internal/postgres"
+	"github.com/dmi3midd/grpcsso/internal/redis"
 	"github.com/dmi3midd/grpcsso/internal/repository"
 	"github.com/dmi3midd/grpcsso/internal/service"
 )
@@ -32,6 +33,15 @@ func main() {
 	defer func() {
 		log.Println("closing postgres connection")
 		postgresService.Close()
+	}()
+
+	redisService, err := redis.New(&cfg.Redis)
+	if err != nil {
+		log.Fatalf("failed to connect to redis: %v", err)
+	}
+	defer func() {
+		log.Println("closing redis connection")
+		redisService.Close()
 	}()
 
 	// Create listener

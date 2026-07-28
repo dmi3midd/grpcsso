@@ -8,6 +8,7 @@ import (
 type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	Postgres PostgresConfig `yaml:"postgres"`
+	Redis    RedisConfig    `yaml:"redis"`
 	JWT      JWTConfig      `yaml:"jwt"`
 	PEM      PEMConfig      `yaml:"pem"`
 	Keys     KeysPair
@@ -28,6 +29,10 @@ type PostgresConfig struct {
 	MaxOpenConns int           `yaml:"maxOpenConns"`
 	MaxIdleConns int           `yaml:"maxIdleConns"`
 	MaxIdleTime  time.Duration `yaml:"maxIdleTime"`
+}
+
+type RedisConfig struct {
+	URI string `yaml:"uri"`
 }
 
 type JWTConfig struct {
