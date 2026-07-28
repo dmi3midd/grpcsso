@@ -11,10 +11,6 @@ import (
 )
 
 func (s *Server) GetPermission(ctx context.Context, req *grpcssov1.GetPermissionRequest) (*grpcssov1.GetPermissionResponse, error) {
-	if req.GetPermissionId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "permission_id is required")
-	}
-
 	permission, err := s.rbacService.GetPermissionById(ctx, req.GetPermissionId())
 	if err != nil {
 		if errors.Is(err, service.ErrPermissionNotFound) {
@@ -30,10 +26,6 @@ func (s *Server) GetPermission(ctx context.Context, req *grpcssov1.GetPermission
 }
 
 func (s *Server) CreatePermission(ctx context.Context, req *grpcssov1.CreatePermissionRequest) (*grpcssov1.CreatePermissionResponse, error) {
-	if req.GetName() == "" {
-		return nil, status.Error(codes.InvalidArgument, "name is required")
-	}
-
 	id, err := s.rbacService.CreatePermission(ctx, req.GetName())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -45,10 +37,6 @@ func (s *Server) CreatePermission(ctx context.Context, req *grpcssov1.CreatePerm
 }
 
 func (s *Server) DeletePermission(ctx context.Context, req *grpcssov1.DeletePermissionRequest) (*grpcssov1.DeletePermissionResponse, error) {
-	if req.GetPermissionId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "permission_id is required")
-	}
-
 	id, err := s.rbacService.DeletePermission(ctx, req.GetPermissionId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -60,10 +48,6 @@ func (s *Server) DeletePermission(ctx context.Context, req *grpcssov1.DeletePerm
 }
 
 func (s *Server) AssignPermission(ctx context.Context, req *grpcssov1.AssignPermissionRequest) (*grpcssov1.AssignPermissionResponse, error) {
-	if req.GetPermissionId() == "" || req.GetRoleId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "permission_id and role_id are required")
-	}
-
 	permId, roleId, err := s.rbacService.AssignPermissionToRole(ctx, req.GetPermissionId(), req.GetRoleId())
 	if err != nil {
 		if errors.Is(err, service.ErrPermissionNotFound) {
@@ -82,10 +66,6 @@ func (s *Server) AssignPermission(ctx context.Context, req *grpcssov1.AssignPerm
 }
 
 func (s *Server) RevokePermission(ctx context.Context, req *grpcssov1.RevokePermissionRequest) (*grpcssov1.RevokePermissionResponse, error) {
-	if req.GetPermissionId() == "" || req.GetRoleId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "permission_id and role_id are required")
-	}
-
 	permId, roleId, err := s.rbacService.RevokePermissionFromRole(ctx, req.GetPermissionId(), req.GetRoleId())
 	if err != nil {
 		if errors.Is(err, service.ErrPermissionNotFound) {
@@ -104,10 +84,6 @@ func (s *Server) RevokePermission(ctx context.Context, req *grpcssov1.RevokePerm
 }
 
 func (s *Server) GetRolePermissions(ctx context.Context, req *grpcssov1.GetRolePermissionsRequest) (*grpcssov1.GetRolePermissionsResponse, error) {
-	if req.GetRoleId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "role_id is required")
-	}
-
 	permissions, err := s.rbacService.GetRolePermissions(ctx, req.GetRoleId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

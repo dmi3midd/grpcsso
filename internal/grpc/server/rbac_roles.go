@@ -11,10 +11,6 @@ import (
 )
 
 func (s *Server) GetRole(ctx context.Context, req *grpcssov1.GetRoleRequest) (*grpcssov1.GetRoleResponse, error) {
-	if req.GetRoleId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "role_id is required")
-	}
-
 	role, err := s.rbacService.GetRoleById(ctx, req.GetRoleId())
 	if err != nil {
 		if errors.Is(err, service.ErrRoleNotFound) {
@@ -30,10 +26,6 @@ func (s *Server) GetRole(ctx context.Context, req *grpcssov1.GetRoleRequest) (*g
 }
 
 func (s *Server) CreateRole(ctx context.Context, req *grpcssov1.CreateRoleRequest) (*grpcssov1.CreateRoleResponse, error) {
-	if req.GetName() == "" {
-		return nil, status.Error(codes.InvalidArgument, "name is required")
-	}
-
 	id, err := s.rbacService.CreateRole(ctx, req.GetName())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -45,10 +37,6 @@ func (s *Server) CreateRole(ctx context.Context, req *grpcssov1.CreateRoleReques
 }
 
 func (s *Server) DeleteRole(ctx context.Context, req *grpcssov1.DeleteRoleRequest) (*grpcssov1.DeleteRoleResponse, error) {
-	if req.GetRoleId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "role_id is required")
-	}
-
 	id, err := s.rbacService.DeleteRole(ctx, req.GetRoleId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -60,10 +48,6 @@ func (s *Server) DeleteRole(ctx context.Context, req *grpcssov1.DeleteRoleReques
 }
 
 func (s *Server) AssignRole(ctx context.Context, req *grpcssov1.AssignRoleRequest) (*grpcssov1.AssignRoleResponse, error) {
-	if req.GetRoleId() == "" || req.GetUserId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "role_id and user_id are required")
-	}
-
 	roleId, userId, err := s.rbacService.AssignRoleToUser(ctx, req.GetRoleId(), req.GetUserId())
 	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
@@ -82,10 +66,6 @@ func (s *Server) AssignRole(ctx context.Context, req *grpcssov1.AssignRoleReques
 }
 
 func (s *Server) RevokeRole(ctx context.Context, req *grpcssov1.RevokeRoleRequest) (*grpcssov1.RevokeRoleResponse, error) {
-	if req.GetRoleId() == "" || req.GetUserId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "role_id and user_id are required")
-	}
-
 	roleId, userId, err := s.rbacService.RevokeRoleFromUser(ctx, req.GetRoleId(), req.GetUserId())
 	if err != nil {
 		if errors.Is(err, service.ErrUserNotFound) {
@@ -104,10 +84,6 @@ func (s *Server) RevokeRole(ctx context.Context, req *grpcssov1.RevokeRoleReques
 }
 
 func (s *Server) GetUserRoles(ctx context.Context, req *grpcssov1.GetUserRolesRequest) (*grpcssov1.GetUserRolesResponse, error) {
-	if req.GetUserId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "user_id is required")
-	}
-
 	roles, err := s.rbacService.GetUserRoles(ctx, req.GetUserId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

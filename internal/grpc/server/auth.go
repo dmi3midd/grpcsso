@@ -13,10 +13,6 @@ import (
 )
 
 func (s *Server) Registration(ctx context.Context, req *grpcssov1.RegistrationRequest) (*grpcssov1.RegistrationResponse, error) {
-	if req.GetUsername() == "" || req.GetEmail() == "" || req.GetPassword() == "" {
-		return nil, status.Error(codes.InvalidArgument, "username, email and password are required")
-	}
-
 	id, err := s.userService.Registration(ctx, req.GetUsername(), req.GetEmail(), req.GetPassword())
 	if err != nil {
 		if errors.Is(err, service.ErrUserAlreadyExist) {
@@ -31,10 +27,6 @@ func (s *Server) Registration(ctx context.Context, req *grpcssov1.RegistrationRe
 }
 
 func (s *Server) Login(ctx context.Context, req *grpcssov1.LoginRequest) (*grpcssov1.LoginResponse, error) {
-	if req.GetEmail() == "" || req.GetPassword() == "" {
-		return nil, status.Error(codes.InvalidArgument, "email and password are required")
-	}
-
 	userAgent, ipAddress := extractMetadata(ctx)
 
 	authDto, err := s.userService.Login(ctx, req.GetEmail(), req.GetPassword(), userAgent, ipAddress)
@@ -60,10 +52,6 @@ func (s *Server) Login(ctx context.Context, req *grpcssov1.LoginRequest) (*grpcs
 }
 
 func (s *Server) Logout(ctx context.Context, req *grpcssov1.LogoutRequest) (*grpcssov1.LogoutResponse, error) {
-	if req.GetRefreshToken() == "" {
-		return nil, status.Error(codes.InvalidArgument, "refresh token is required")
-	}
-
 	if err := s.userService.Logout(ctx, req.GetRefreshToken()); err != nil {
 		if errors.Is(err, service.ErrInvalidRefreshToken) {
 			return nil, status.Error(codes.Unauthenticated, "invalid refresh token")
@@ -75,10 +63,6 @@ func (s *Server) Logout(ctx context.Context, req *grpcssov1.LogoutRequest) (*grp
 }
 
 func (s *Server) Refresh(ctx context.Context, req *grpcssov1.RefreshRequest) (*grpcssov1.RefreshResponse, error) {
-	if req.GetRefreshToken() == "" {
-		return nil, status.Error(codes.InvalidArgument, "refresh token is required")
-	}
-
 	userAgent, ipAddress := extractMetadata(ctx)
 
 	authDto, err := s.userService.Refresh(ctx, req.GetRefreshToken(), ipAddress, userAgent)
