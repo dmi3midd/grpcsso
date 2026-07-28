@@ -59,11 +59,14 @@ type RBACService interface {
 	GetRolePermissions(ctx context.Context, roleId string) ([]domain.Permission, error)
 }
 
+// TODO: need to review errors handling for cache (maybe logging in service layer)
 type rbacService struct {
-	txManager      repository.TxManager
-	userRepo       repository.UserRepository
-	roleRepo       repository.RoleRepository
-	permissionRepo repository.PermissionRepository
+	txManager       repository.TxManager
+	userRepo        repository.UserRepository
+	roleRepo        repository.RoleRepository
+	permissionRepo  repository.PermissionRepository
+	roleCache       repository.RoleRepository
+	permissionCache repository.PermissionRepository
 }
 
 func NewRBACService(
@@ -71,11 +74,15 @@ func NewRBACService(
 	userRepo repository.UserRepository,
 	roleRepo repository.RoleRepository,
 	permissionRepo repository.PermissionRepository,
+	roleCache repository.RoleRepository,
+	permissionCache repository.PermissionRepository,
 ) RBACService {
 	return &rbacService{
-		txManager:      txManager,
-		userRepo:       userRepo,
-		roleRepo:       roleRepo,
-		permissionRepo: permissionRepo,
+		txManager:       txManager,
+		userRepo:        userRepo,
+		roleRepo:        roleRepo,
+		permissionRepo:  permissionRepo,
+		roleCache:       roleCache,
+		permissionCache: permissionCache,
 	}
 }
