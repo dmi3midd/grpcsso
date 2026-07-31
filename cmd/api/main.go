@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/dmi3midd/grpcsso/internal/config"
 	"github.com/dmi3midd/grpcsso/internal/grpc/app"
@@ -14,9 +16,14 @@ import (
 	"github.com/dmi3midd/grpcsso/internal/redis"
 	"github.com/dmi3midd/grpcsso/internal/repository"
 	"github.com/dmi3midd/grpcsso/internal/service"
+	"github.com/dmi3midd/grpcsso/internal/workers"
 )
 
 func main() {
+	// Root context with signal cancellation for graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	// Load config
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -63,6 +70,13 @@ func main() {
 	roleCache := repository.NewRoleCache(redisClient)
 	permissionCache := repository.NewPermissionCache(redisClient)
 
+	cleanerInterval := 16 * time.Minute
+	if cfg.JWT.TokenCleanerInterval > 0 {
+		cleanerInterval = cfg.JWT.TokenCleanerInterval
+	}
+	tokenCleaner := workers.NewTokenCleaner(cleanerInterval, tokenRepo)
+	go tokenCleaner.Start(ctx)
+
 	tokenManager := service.NewTokenManager(txManager, tokenRepo, &cfg.Keys, &cfg.JWT)
 	userService := service.NewUserService(txManager, userRepo, tokenManager)
 	rbacService := service.NewRBACService(txManager, userRepo, roleRepo, permissionRepo, roleCache, permissionCache)
@@ -85,11 +99,8 @@ func main() {
 	}()
 
 	// Graceful shutdown
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
-
-	sign := <-stop
-	log.Printf("received shutdown signal: %s", sign.String())
+	<-ctx.Done()
+	log.Println("received shutdown signal, stopping application...")
 
 	gRPCApp.Stop()
 	log.Println("application stopped gracefully")

@@ -36,9 +36,10 @@ type RedisConfig struct {
 }
 
 type JWTConfig struct {
-	AccessTokenTTL  time.Duration `yaml:"accessTokenTTL"`
-	RefreshTokenTTL time.Duration `yaml:"refreshTokenTTL"`
-	Audience        string        `yaml:"audience"`
+	AccessTokenTTL       time.Duration `yaml:"accessTokenTTL"`
+	RefreshTokenTTL      time.Duration `yaml:"refreshTokenTTL"`
+	Audience             string        `yaml:"audience"`
+	TokenCleanerInterval time.Duration `yaml:"tokenCleanerInterval"`
 }
 
 type PEMConfig struct {

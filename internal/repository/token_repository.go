@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/dmi3midd/grpcsso/internal/domain"
 
@@ -13,7 +14,6 @@ import (
 
 var (
 	ErrTokenNotFound error = errors.New("token not found")
-	ErrNoRowsDeleted error = errors.New("no rows deleted")
 )
 
 type TokenRepository interface {
@@ -31,6 +31,8 @@ type TokenRepository interface {
 	DeleteById(ctx context.Context, id string) error
 	// DeleteByToken removes the Token entity by its refresh token.
 	DeleteByToken(ctx context.Context, refreshToken string) error
+	// DeleteExpired removes expired tokens.
+	DeleteExpired(ctx context.Context) error
 }
 
 type tokenRepository struct {
@@ -126,6 +128,16 @@ func (r *tokenRepository) DeleteByToken(ctx context.Context, refreshToken string
 	`
 	executor := ExtractTx(ctx, r.db)
 	if _, err := executor.ExecContext(ctx, query, refreshToken); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
+}
+
+func (r *tokenRepository) DeleteExpired(ctx context.Context) error {
+	op := "TokenRepository.DeleteExpired"
+	query := "DELETE FROM refresh_tokens WHERE expires_at < $1"
+	_, err := r.db.ExecContext(ctx, query, time.Now())
+	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil

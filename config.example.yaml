@@ -17,6 +17,7 @@ jwt:
   accessTokenTTL: 15m
   refreshTokenTTL: 336h
   audience: your-service-consumer
+  tokenCleanerInterval: 16m
 pem:
   privPath: "./storage/keys/private.pem"
   pubPath: "./storage/keys/public.pem"
