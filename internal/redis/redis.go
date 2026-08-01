@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"strconv"
 	"time"
@@ -34,9 +33,11 @@ type redisService struct {
 
 // New creates and initializes a new RedisService.
 func New(cfg *config.RedisConfig) (RedisService, error) {
+	op := "redis.New"
+
 	opt, err := redis.ParseURL(cfg.URI)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("%s. Failed to parse URL: %w", op, err)
 	}
 
 	rdb := redis.NewClient(opt)
@@ -46,7 +47,7 @@ func New(cfg *config.RedisConfig) (RedisService, error) {
 	defer cancel()
 
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("%s. Failed to ping Redis: %w", op, err)
 	}
 
 	return &redisService{

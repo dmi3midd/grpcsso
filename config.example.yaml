@@ -1,6 +1,9 @@
 server:
   host: localhost
   port: 3100
+logs:
+  logPath: ./storage/logs/application.log
+  level: info # debug, info, warn, error
 postgres:
   name: grpcsso
   host: localhost

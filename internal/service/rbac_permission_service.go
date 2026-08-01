@@ -14,12 +14,10 @@ func (s *rbacService) GetPermissionById(ctx context.Context, permissionId string
 	op := "RBACService.GetPermissionById"
 	// Try to get permission from cache
 	permissionFromCache, err := s.permissionCache.GetById(ctx, permissionId)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	if permissionFromCache != nil {
+	if err == nil && permissionFromCache != nil {
 		return permissionFromCache, nil
 	}
+
 	// Try to get permission from database
 	permission, err := s.permissionRepo.GetById(ctx, permissionId)
 	if err != nil {
@@ -28,10 +26,9 @@ func (s *rbacService) GetPermissionById(ctx context.Context, permissionId string
 		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
 	// Set permission to cache
-	if err := s.permissionCache.Create(ctx, permission); err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
+	_ = s.permissionCache.Create(ctx, permission)
 	return permission, nil
 }
 
@@ -43,27 +40,26 @@ func (s *rbacService) CreatePermission(ctx context.Context, name string) (string
 		Id:   id,
 		Name: name,
 	}
-	// Create permission in cache
-	if err := s.permissionCache.Create(ctx, permission); err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
-	}
+
 	// Create permission in database
 	if err := s.permissionRepo.Create(ctx, permission); err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
+
+	// Create permission in cache
+	_ = s.permissionCache.Create(ctx, permission)
 	return id, nil
 }
 
 func (s *rbacService) DeletePermission(ctx context.Context, permissionId string) (string, error) {
 	op := "RBACService.DeletePermission"
-	// Delete permission from cache
-	if err := s.permissionCache.Delete(ctx, permissionId); err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
-	}
 	// Delete permission from database
 	if err := s.permissionRepo.Delete(ctx, permissionId); err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
+
+	// Delete permission from cache
+	_ = s.permissionCache.Delete(ctx, permissionId)
 	return permissionId, nil
 }
 
@@ -71,10 +67,6 @@ func (s *rbacService) DeletePermission(ctx context.Context, permissionId string)
 
 func (s *rbacService) AssignPermissionToRole(ctx context.Context, permissionId, roleId string) (string, string, error) {
 	op := "RBACService.AssignPermissionToRole"
-	// Assign permission to role in cache
-	if err := s.permissionCache.Assign(ctx, roleId, permissionId); err != nil {
-		return "", "", fmt.Errorf("%s: %w", op, err)
-	}
 	// Assign permission to role in database
 	err := s.txManager.WithTx(ctx, func(txCtx context.Context) error {
 		exists, err := s.roleRepo.IsExists(txCtx, roleId)
@@ -101,15 +93,14 @@ func (s *rbacService) AssignPermissionToRole(ctx context.Context, permissionId, 
 	if err != nil {
 		return "", "", err
 	}
+
+	// Assign permission to role in cache
+	_ = s.permissionCache.Assign(ctx, roleId, permissionId)
 	return permissionId, roleId, nil
 }
 
 func (s *rbacService) RevokePermissionFromRole(ctx context.Context, permissionId, roleId string) (string, string, error) {
 	op := "RBACService.RevokePermissionFromRole"
-	// Revoke permission from role in cache
-	if err := s.permissionCache.Revoke(ctx, roleId, permissionId); err != nil {
-		return "", "", fmt.Errorf("%s: %w", op, err)
-	}
 	// Revoke permission from role in database
 	err := s.txManager.WithTx(ctx, func(txCtx context.Context) error {
 		exists, err := s.roleRepo.IsExists(txCtx, roleId)
@@ -136,6 +127,9 @@ func (s *rbacService) RevokePermissionFromRole(ctx context.Context, permissionId
 	if err != nil {
 		return "", "", err
 	}
+
+	// Revoke permission from role in cache
+	_ = s.permissionCache.Revoke(ctx, roleId, permissionId)
 	return permissionId, roleId, nil
 }
 
@@ -143,23 +137,19 @@ func (s *rbacService) GetRolePermissions(ctx context.Context, roleId string) ([]
 	op := "RBACService.GetRolePermissions"
 	// Get permissions from cache
 	permissionsFromCache, err := s.permissionCache.GetByRole(ctx, roleId)
-	if err != nil {
-		return []domain.Permission{}, fmt.Errorf("%s: %w", op, err)
-	}
-	if len(permissionsFromCache) > 0 {
+	if err == nil && len(permissionsFromCache) > 0 {
 		return permissionsFromCache, nil
 	}
+
 	// Get permissions from database
 	permissions, err := s.permissionRepo.GetByRole(ctx, roleId)
 	if err != nil {
 		return []domain.Permission{}, fmt.Errorf("%s: %w", op, err)
 	}
+
 	// Set permissions to role in cache
 	for _, permission := range permissions {
-		if err := s.permissionCache.Assign(ctx, roleId, permission.Id); err != nil {
-			// Need to log error because it's not critical to return error
-			return permissions, nil
-		}
+		_ = s.permissionCache.Assign(ctx, roleId, permission.Id)
 	}
 	return permissions, nil
 }

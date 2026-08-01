@@ -155,11 +155,19 @@ func (s *userService) Refresh(ctx context.Context, refreshToken, ipAddress, user
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// if token is not found user is unauthorized and need to login
+	existingToken, err := s.tokenManager.FindToken(ctx, tokenId)
+	if err != nil {
+		if errors.Is(err, ErrTokenNotFound) {
+			return nil, fmt.Errorf("%s: %w", op, ErrInvalidRefreshToken)
+		}
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if existingToken.IsRevoked || existingToken.ExpiresAt.Before(time.Now()) {
+		return nil, fmt.Errorf("%s: %w", op, ErrInvalidRefreshToken)
+	}
+
 	if err := s.tokenManager.RevokeToken(ctx, tokenId); err != nil {
-		// if errors.Is(err, ErrTokenNotFound) {
-		// 	return nil, fmt.Errorf("%s: %w", op, ErrTokenNotFound)
-		// }
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 

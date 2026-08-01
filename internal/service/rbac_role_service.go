@@ -14,15 +14,10 @@ func (s *rbacService) GetRoleById(ctx context.Context, roleId string) (*domain.R
 	op := "RBACService.GetRoleById"
 	// Try to get role from cache
 	roleFromCache, err := s.roleCache.GetById(ctx, roleId)
-	if err != nil {
-		if errors.Is(err, repository.ErrRoleNotFound) {
-			return nil, fmt.Errorf("%s: %w", op, ErrRoleNotFound)
-		}
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	if roleFromCache != nil {
+	if err == nil && roleFromCache != nil {
 		return roleFromCache, nil
 	}
+
 	// Try to get role from database
 	role, err := s.roleRepo.GetById(ctx, roleId)
 	if err != nil {
@@ -31,10 +26,9 @@ func (s *rbacService) GetRoleById(ctx context.Context, roleId string) (*domain.R
 		}
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
 	// Set role to cache
-	if err := s.roleCache.Create(ctx, role); err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
+	_ = s.roleCache.Create(ctx, role)
 	return role, nil
 }
 
@@ -46,14 +40,14 @@ func (s *rbacService) CreateRole(ctx context.Context, name string) (string, erro
 		Id:   id,
 		Name: name,
 	}
+
 	// Create role in database
 	if err := s.roleRepo.Create(ctx, role); err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
+
 	// Create role in cache
-	if err := s.roleCache.Create(ctx, role); err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
-	}
+	_ = s.roleCache.Create(ctx, role)
 	return id, nil
 }
 
@@ -63,10 +57,9 @@ func (s *rbacService) DeleteRole(ctx context.Context, roleId string) (string, er
 	if err := s.roleRepo.Delete(ctx, roleId); err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
+
 	// Delete role from cache
-	if err := s.roleCache.Delete(ctx, roleId); err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
-	}
+	_ = s.roleCache.Delete(ctx, roleId)
 	return roleId, nil
 }
 
@@ -74,10 +67,6 @@ func (s *rbacService) DeleteRole(ctx context.Context, roleId string) (string, er
 
 func (s *rbacService) AssignRoleToUser(ctx context.Context, roleId, userId string) (string, string, error) {
 	op := "RBACService.AssignRoleToUser"
-	// Assign role to user in cache
-	if err := s.roleCache.Assign(ctx, userId, roleId); err != nil {
-		return "", "", fmt.Errorf("%s: %w", op, err)
-	}
 	// Assign role to user in database with transaction
 	err := s.txManager.WithTx(ctx, func(txCtx context.Context) error {
 		exists, err := s.userRepo.IsExists(txCtx, userId)
@@ -104,15 +93,14 @@ func (s *rbacService) AssignRoleToUser(ctx context.Context, roleId, userId strin
 	if err != nil {
 		return "", "", err
 	}
+
+	// Assign role to user in cache
+	_ = s.roleCache.Assign(ctx, userId, roleId)
 	return roleId, userId, nil
 }
 
 func (s *rbacService) RevokeRoleFromUser(ctx context.Context, roleId, userId string) (string, string, error) {
 	op := "RBACService.RevokeRoleFromUser"
-	// Revoke role from user in cache
-	if err := s.roleCache.Revoke(ctx, userId, roleId); err != nil {
-		return "", "", fmt.Errorf("%s: %w", op, err)
-	}
 	// Revoke role from user in database with transaction
 	err := s.txManager.WithTx(ctx, func(txCtx context.Context) error {
 		exists, err := s.userRepo.IsExists(txCtx, userId)
@@ -139,6 +127,9 @@ func (s *rbacService) RevokeRoleFromUser(ctx context.Context, roleId, userId str
 	if err != nil {
 		return "", "", err
 	}
+
+	// Revoke role from user in cache
+	_ = s.roleCache.Revoke(ctx, userId, roleId)
 	return roleId, userId, nil
 }
 
@@ -146,22 +137,18 @@ func (s *rbacService) GetUserRoles(ctx context.Context, userId string) ([]domain
 	op := "RBACService.GetUserRoles"
 	// Try to get roles from cache
 	rolesFromCache, err := s.roleCache.GetByUser(ctx, userId)
-	if err != nil {
-		return []domain.Role{}, fmt.Errorf("%s: %w", op, err)
-	}
-	if len(rolesFromCache) > 0 {
+	if err == nil && len(rolesFromCache) > 0 {
 		return rolesFromCache, nil
 	}
+
 	// Try to get roles from database
 	roles, err := s.roleRepo.GetByUser(ctx, userId)
 	if err != nil {
 		return []domain.Role{}, fmt.Errorf("%s: %w", op, err)
 	}
+
 	for _, role := range roles {
-		// Need to log error because it's not critical to return error
-		if err := s.roleCache.Assign(ctx, userId, role.Id); err != nil {
-			return roles, nil
-		}
+		_ = s.roleCache.Assign(ctx, userId, role.Id)
 	}
 	return roles, nil
 }

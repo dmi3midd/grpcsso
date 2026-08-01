@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"strconv"
 	"time"
@@ -36,18 +35,20 @@ type postgresService struct {
 }
 
 func New(cfg *config.PostgresConfig) (PostgresService, error) {
+	op := "postgres.New"
+
 	connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.Name, cfg.SSLMode)
 	db, err := sqlx.Connect("pgx", connStr)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("%s. Failed to connect to database: %w", op, err)
 	}
 
 	goose.SetBaseFS(migrations.FS)
 	if err := goose.SetDialect("postgres"); err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("%s. Failed to set dialect: %w", op, err)
 	}
 	if err := goose.Up(db.DB, "."); err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("%s. Failed to run migrations: %w", op, err)
 	}
 
 	return &postgresService{

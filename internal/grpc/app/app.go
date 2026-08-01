@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/dmi3midd/grpcsso/internal/grpc/apierrors"
 	"github.com/dmi3midd/grpcsso/internal/grpc/interceptor"
 	"github.com/dmi3midd/grpcsso/internal/grpc/server"
 	"google.golang.org/grpc"
@@ -20,8 +21,10 @@ func NewApp(srv *server.Server, opts ...grpc.ServerOption) (*App, error) {
 		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
 	}
 
+	errInterceptor := apierrors.UnaryErrorInterceptor()
+
 	serverOpts := append([]grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(valInterceptor),
+		grpc.ChainUnaryInterceptor(valInterceptor, errInterceptor),
 	}, opts...)
 
 	gRPCServer := grpc.NewServer(serverOpts...)

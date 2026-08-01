@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,6 +13,7 @@ import (
 	"github.com/dmi3midd/grpcsso/internal/grpc/app"
 	"github.com/dmi3midd/grpcsso/internal/grpc/listener"
 	"github.com/dmi3midd/grpcsso/internal/grpc/server"
+	"github.com/dmi3midd/grpcsso/internal/logger"
 	"github.com/dmi3midd/grpcsso/internal/postgres"
 	"github.com/dmi3midd/grpcsso/internal/redis"
 	"github.com/dmi3midd/grpcsso/internal/repository"
@@ -30,24 +32,36 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	log.Println("starting application...")
+	// Initialize logger
+	logFile, err := logger.Setup(cfg.Logs.LogPath, cfg.Logs.Level)
+	if err != nil {
+		log.Fatalf("failed to setup logger: %v", err)
+	}
+	defer logFile.Close()
 
 	// Connect to Postgres
 	postgresService, err := postgres.New(&cfg.Postgres)
 	if err != nil {
-		log.Fatalf("failed to connect to postgres: %v", err)
+		slog.Error("failed to connect to postgres",
+			slog.String("error", err.Error()),
+		)
+		os.Exit(1)
 	}
 	defer func() {
-		log.Println("closing postgres connection")
+		slog.Info("closing postgres connection")
 		postgresService.Close()
 	}()
 
 	redisService, err := redis.New(&cfg.Redis)
 	if err != nil {
-		log.Fatalf("failed to connect to redis: %v", err)
+		slog.Error(
+			"failed to connect to redis",
+			slog.String("error", err.Error()),
+		)
+		os.Exit(1)
 	}
 	defer func() {
-		log.Println("closing redis connection")
+		slog.Info("closing redis connection")
 		redisService.Close()
 	}()
 
@@ -55,7 +69,11 @@ func main() {
 	listener := listener.NewListener(&cfg.Server)
 	lis, err := listener.Listen()
 	if err != nil {
-		log.Fatalf("failed to create listener: %v", err)
+		slog.Error(
+			"failed to create listener",
+			slog.String("error", err.Error()),
+		)
+		os.Exit(1)
 	}
 
 	// Initialize repositories and services
@@ -87,21 +105,32 @@ func main() {
 	// Initialize gRPC app
 	gRPCApp, err := app.NewApp(gRPCServer)
 	if err != nil {
-		log.Fatalf("failed to create gRPC app: %v", err)
+		slog.Error(
+			"failed to create gRPC app",
+			slog.String("error", err.Error()),
+		)
+		os.Exit(1)
 	}
 
 	// Run gRPC server in a goroutine
 	go func() {
-		log.Printf("starting gRPC server on %s:%d", cfg.Server.Host, cfg.Server.Port)
+		slog.Info("starting gRPC server",
+			slog.String("host", cfg.Server.Host),
+			slog.Int("port", cfg.Server.Port),
+		)
 		if err := gRPCApp.Run(lis); err != nil {
-			log.Fatalf("gRPC server failed to run: %v", err)
+			slog.Error(
+				"gRPC server failed to run",
+				slog.String("error", err.Error()),
+			)
+			os.Exit(1)
 		}
 	}()
 
 	// Graceful shutdown
 	<-ctx.Done()
-	log.Println("received shutdown signal, stopping application...")
+	slog.Info("received shutdown signal, stopping application...")
 
 	gRPCApp.Stop()
-	log.Println("application stopped gracefully")
+	slog.Info("application stopped gracefully")
 }

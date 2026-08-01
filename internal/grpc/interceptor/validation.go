@@ -3,6 +3,7 @@ package interceptor
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"buf.build/go/protovalidate"
 	"google.golang.org/grpc"
@@ -26,6 +27,10 @@ func NewValidationInterceptor() (grpc.UnaryServerInterceptor, error) {
 	) (any, error) {
 		if msg, ok := req.(proto.Message); ok && msg != nil {
 			if err := validator.Validate(msg); err != nil {
+				slog.Info(
+					"invalid request validation",
+					slog.String("error", err.Error()),
+				)
 				return nil, status.Error(codes.InvalidArgument, err.Error())
 			}
 		}

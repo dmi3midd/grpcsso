@@ -7,6 +7,7 @@ import (
 
 type Config struct {
 	Server   ServerConfig   `yaml:"server"`
+	Logs     Logs           `yaml:"logs"`
 	Postgres PostgresConfig `yaml:"postgres"`
 	Redis    RedisConfig    `yaml:"redis"`
 	JWT      JWTConfig      `yaml:"jwt"`
@@ -17,6 +18,11 @@ type Config struct {
 type ServerConfig struct {
 	Host string `yaml:"host"`
 	Port int    `yaml:"port"`
+}
+
+type Logs struct {
+	LogPath string `yaml:"logPath"`
+	Level   string `yaml:"level"`
 }
 
 type PostgresConfig struct {
